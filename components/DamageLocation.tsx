@@ -695,6 +695,21 @@ const generateAndUploadArgicCode = async (quoteId: string) => {
   }
   
   const handleContinue = async () => {
+    console.log('handleContinue clicked');
+    console.log('Current state:', {
+      selectedWindows: Array.from(selectedWindows),
+      windowDamage,
+      chipSize,
+      selectedSpecifications: Array.from(selectedSpecifications),
+      glassType,
+      isAllQuestionsAnswered: isAllQuestionsAnswered()
+    });
+
+    if (!isAllQuestionsAnswered()) {
+      console.log('Not all questions are answered');
+      return;
+    }
+
     setIsContinueLoading(true);
     
     try {
@@ -819,23 +834,42 @@ const generateAndUploadArgicCode = async (quoteId: string) => {
 
   const isAllQuestionsAnswered = () => {
     // Check if any windows are selected
-    if (selectedWindows.size === 0) return false;
+    if (selectedWindows.size === 0) {
+      console.log('No windows selected');
+      return false;
+    }
 
     // Check if all selected windows have damage types
     const allWindowsHaveDamage = Array.from(selectedWindows).every(windowId => 
       windowDamage[windowId] !== undefined && windowDamage[windowId] !== null
     );
-    if (!allWindowsHaveDamage) return false;
+    if (!allWindowsHaveDamage) {
+      console.log('Not all windows have damage types');
+      return false;
+    }
 
     // Check chip size if needed
     const needsChipSize = Array.from(selectedWindows).some(windowId => 
       windowDamage[windowId] === 'Chipped'
     );
-    if (needsChipSize && !chipSize) return false;
+    if (needsChipSize && !chipSize) {
+      console.log('Chip size needed but not selected');
+      return false;
+    }
 
-    // Check specifications if windscreen is selected
+    // Check specifications if windscreen is selected and has large chip
     const hasWindscreen = selectedWindows.has('jqvmap1_ws');
-    if (hasWindscreen && selectedSpecifications.size === 0) return false;
+    const hasLargeChip = chipSize === 'Yes';
+    if (hasWindscreen && hasLargeChip && selectedSpecifications.size === 0) {
+      console.log('Windscreen specifications needed but not selected');
+      return false;
+    }
+
+    // Check if glass type is selected
+    if (!glassType) {
+      console.log('Glass type not selected');
+      return false;
+    }
 
     // If all checks pass, return true
     return true;
@@ -1361,9 +1395,11 @@ const generateAndUploadArgicCode = async (quoteId: string) => {
               {selectedWindows.size > 0 && (
                 <button
                   onClick={handleContinue}
-                  disabled={isContinueLoading}
-                  className={`w-full mt-8 p-4 bg-[#0FB8C1] text-white rounded-full text-xl font-semibold
-                    ${isContinueLoading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-[#0CA7AF]'}`}
+                  disabled={isContinueLoading || !isAllQuestionsAnswered()}
+                  className={`w-full mt-8 p-4 text-white rounded-full text-xl font-semibold
+                    ${isContinueLoading || !isAllQuestionsAnswered() 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : 'bg-[#0FB8C1] hover:bg-[#0CA7AF]'}`}
                 >
                   {isContinueLoading ? 'Processing...' : 'Continue'}
                 </button>
