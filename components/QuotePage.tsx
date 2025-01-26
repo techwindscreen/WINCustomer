@@ -148,6 +148,10 @@ const QuotePage: React.FC = () => {
   const [isPriceBreakdownOpen, setIsPriceBreakdownOpen] = useState(false);
 
   useEffect(() => {
+    // Clear stored form data when reaching the quote page
+    localStorage.removeItem('windscreenCompareData');
+    localStorage.removeItem('damageLocationData');
+    
     if (parsedData.vehicleReg) {
       calculateQuoteWithType(deliveryType);
     }

@@ -946,6 +946,26 @@ const generateAndUploadArgicCode = async (quoteId: string) => {
     fetchExistingDamage();
   }, [router.query]);
 
+  // Add this useEffect at the top of the component
+  useEffect(() => {
+    const savedData = localStorage.getItem('damageLocationData');
+    if (savedData) {
+      const {
+        selectedWindows: savedWindows,
+        windowDamage: savedDamage,
+        specifications: savedSpecs,
+        chipSize: savedChipSize,
+        comments: savedComments
+      } = JSON.parse(savedData);
+      
+      setSelectedWindows(new Set(savedWindows));
+      setWindowDamage(savedDamage);
+      setSelectedSpecifications(new Set(savedSpecs));
+      setChipSize(savedChipSize);
+      setComments(savedComments);
+    }
+  }, []);
+
   return (
     <div className="flex-grow w-full">
       <main className="flex-grow">

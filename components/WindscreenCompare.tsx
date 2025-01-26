@@ -1,4 +1,4 @@
-import React, { useState, FormEvent } from 'react'
+import React, { useState, FormEvent, useEffect } from 'react'
 import { useRouter } from 'next/router'
 
 import { Header } from './sections/Header'
@@ -13,6 +13,15 @@ const WindscreenCompare: React.FC = () => {
   const [vehicleReg, setVehicleReg] = useState('')
   const [postcode, setPostcode] = useState('')
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    const savedData = localStorage.getItem('windscreenCompareData');
+    if (savedData) {
+      const { vehicleReg: savedReg, postcode: savedPostcode } = JSON.parse(savedData);
+      setVehicleReg(savedReg);
+      setPostcode(savedPostcode);
+    }
+  }, []);
 
   const isValidUKPostcode = (postcode: string) => {
     const postcodeRegex = /^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$/i;
@@ -48,6 +57,12 @@ const WindscreenCompare: React.FC = () => {
     const quoteID = `WC${timestamp}${random}`;
 
     try {
+      localStorage.setItem('windscreenCompareData', JSON.stringify({
+        vehicleReg: vehicleReg.toUpperCase(),
+        postcode: postcode.toUpperCase(),
+        quoteID
+      }));
+
       router.push({
         pathname: '/damage-location',
         query: { 
