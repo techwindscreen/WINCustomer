@@ -1,0 +1,10 @@
+import '../styles/globals.css'
+import React from 'react';
+
+// ... existing code ...
+function MyApp({ Component, pageProps }: { Component: React.ComponentType; pageProps: any }) {
+  return <Component {...pageProps} />
+}
+// ... existing code ...
+
+export default MyApp

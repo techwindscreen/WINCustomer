@@ -1,0 +1,12 @@
+{
+  "/_app": "pages/_app.js",
+  "/_document": "pages/_document.js",
+  "/_error": "pages/_error.js",
+  "/damage-location": "pages/damage-location.js",
+  "/api/upload-vehicle-details": "pages/api/upload-vehicle-details.js",
+  "/contact-info": "pages/contact-info.js",
+  "/": "pages/index.js",
+  "/api/submit-contact-info": "pages/api/submit-contact-info.js",
+  "/quote": "pages/quote.js",
+  "/api/calculate-quote": "pages/api/calculate-quote.js"
+}
