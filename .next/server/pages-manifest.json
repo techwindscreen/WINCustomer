@@ -2,7 +2,7 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/damage-location": "pages/damage-location.js",
+  "/": "pages/index.js",
   "/contact-info": "pages/contact-info.js",
-  "/": "pages/index.js"
+  "/damage-location": "pages/damage-location.js"
 }
