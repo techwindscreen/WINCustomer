@@ -152,7 +152,7 @@ const ContactDetails: React.FC = () => {
     
     try {
       const response = await fetch(
-        `https://uk1.ukvehicledata.co.uk/api/datapackage/PostcodeLookup?v=2&api_nullitems=1&auth_apikey=6193CC7A-C1B2-469C-AD41-601C6FAA294C&key_POSTCODE=${postcode}`,
+        `https://uk1.ukvehicledata.co.uk/api/datapackage/PostcodeLookup?v=2&api_nullitems=1&auth_apikey=6193cc7a-c1b2-469c-ad41-601c6faa294c&key_POSTCODE=${postcode}`,
         {
           method: 'GET',
           headers: {
@@ -901,18 +901,6 @@ const ContactDetails: React.FC = () => {
                         </span>
                         <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded text-sm">
                           {vehicleDetails?.colour}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="mt-4">
-                      <div className="text-gray-500 text-sm uppercase font-bold mb-1 flex items-center gap-2">
-                        <ClipboardList className="w-4 h-4 text-[#0FB8C1]" />
-                        ARGIC CODE
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded text-sm">
-                          {vehicleRegString === 'HN11EYW' ? '2448AGNMV1B' : 'Failed To Fetch Argic'}
                         </span>
                       </div>
                     </div>

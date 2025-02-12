@@ -2,12 +2,7 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/": "pages/index.js",
-  "/api/upload-vehicle-details": "pages/api/upload-vehicle-details.js",
-  "/contact-info": "pages/contact-info.js",
-  "/damage-location": "pages/damage-location.js",
-  "/api/submit-contact-info": "pages/api/submit-contact-info.js",
   "/quote": "pages/quote.js",
-  "/api/calculate-quote": "pages/api/calculate-quote.js",
-  "/api/vehicle-lookup": "pages/api/vehicle-lookup.js"
+  "/contact-info": "pages/contact-info.js",
+  "/damage-location": "pages/damage-location.js"
 }
