@@ -222,8 +222,6 @@ const generateAndUploadArgicCode = async (quoteId: string) => {
   }, [vehicleReg]);
 
   const fetchVehicleDetails = async () => {
-    console.log('fetchVehicleDetails called with vehicleReg:', vehicleReg);
-    
     if (!vehicleReg) {
       console.log('No vehicleReg provided');
       setVehicleDetails(null)
@@ -234,39 +232,32 @@ const generateAndUploadArgicCode = async (quoteId: string) => {
     setError(null)
 
     try {
-      const response = await fetch(`https://uk1.ukvehicledata.co.uk/api/datapackage/VehicleData?v=2&api_nullitems=1&auth_apikey=6193cc7a-c1b2-469c-ad41-601c6faa294c&key_VRM=${vehicleReg}`);
+      const response = await fetch('/api/vehicle-lookup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ registration: vehicleReg }),
+      });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        throw new Error(`API Error: ${response.status}`);
       }
 
-      const data = await response.json()
+      const data = await response.json();
       
-      if (data.Response.StatusCode === "Success") {
-        const vehicleInfo = data.Response.DataItems;
-        
-        const details = {
-          manufacturer: vehicleInfo.ClassificationDetails?.Dvla?.Make || 'Unknown',
-          model: vehicleInfo.ClassificationDetails?.Dvla?.Model || 'Unknown',
-          year: vehicleInfo.VehicleRegistration?.YearOfManufacture || 'Unknown',
-          colour: vehicleInfo.VehicleRegistration?.Colour || 'Unknown',
-          type: vehicleInfo.VehicleRegistration?.VehicleClass || 'Unknown',
-          style: vehicleInfo.SmmtDetails?.BodyStyle || 'Unknown',
-          doorPlan: `${vehicleInfo.TechnicalDetails?.Dimensions?.NumberOfDoors || '?'} Doors` || 'Unknown'
-        };
-
-        setVehicleDetails(details);
-        await uploadVehicleDetailsToAirtable(details);
-
+      if (data.success) {
+        setVehicleDetails(data.vehicleDetails);
+        await uploadVehicleDetailsToAirtable(data.vehicleDetails);
       } else {
-        throw new Error('Failed to fetch vehicle data')
+        throw new Error('Failed to fetch vehicle data');
       }
     } catch (err) {
-      console.error('Error fetching vehicle details:', err)
-      setError('Failed to fetch vehicle details. Please try again.')
-      setVehicleDetails(null)
+      console.error('Error fetching vehicle details:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch vehicle details');
+      setVehicleDetails(null);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   };
 

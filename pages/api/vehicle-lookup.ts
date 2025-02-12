@@ -8,7 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { registration } = req.body;
 
   try {
-    const apiKey = '89feec4c-7f22-43b1-b77a-980aea4ff74e';
+    const apiKey = '6193CC7A-C1B2-469C-AD41-601C6FAA294C';
     const response = await fetch(
       `https://uk1.ukvehicledata.co.uk/api/datapackage/VehicleData?v=2&api_nullitems=1&auth_apikey=${apiKey}&key_VRM=${registration}`,
       {

@@ -98,6 +98,7 @@ const ContactDetails: React.FC = () => {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [isLoadingAddresses, setIsLoadingAddresses] = useState(false);
   const [addressError, setAddressError] = useState<string | null>(null);
+  const [showAddressDropdown, setShowAddressDropdown] = useState(false);
 
   // Add state for checkbox
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -147,10 +148,11 @@ const ContactDetails: React.FC = () => {
   const fetchAddresses = async (postcode: string) => {
     setIsLoadingAddresses(true);
     setAddressError(null);
+    setShowAddressDropdown(true);
     
     try {
       const response = await fetch(
-        `https://uk1.ukvehicledata.co.uk/api/datapackage/PostcodeLookup?v=2&api_nullitems=1&auth_apikey=6193cc7a-c1b2-469c-ad41-601c6faa294c&key_POSTCODE=${postcode}`,
+        `https://uk1.ukvehicledata.co.uk/api/datapackage/PostcodeLookup?v=2&api_nullitems=1&auth_apikey=6193CC7A-C1B2-469C-AD41-601C6FAA294C&key_POSTCODE=${postcode}`,
         {
           method: 'GET',
           headers: {
@@ -160,7 +162,7 @@ const ContactDetails: React.FC = () => {
       );
 
       const data = await response.json();
-      console.log('Address API response:', data); // For debugging
+      console.log('Address API response:', data);
 
       if (data.Response.StatusCode === "Success" && data.Response.DataItems.AddressDetails) {
         const addressList = data.Response.DataItems.AddressDetails.AddressList || [];
@@ -168,22 +170,26 @@ const ContactDetails: React.FC = () => {
       } else {
         setAddressError('No addresses found for this postcode');
         setAddresses([]);
+        setShowAddressDropdown(false);
       }
     } catch (err) {
       console.error('Error fetching addresses:', err);
       setAddressError('Failed to fetch addresses. Please enter address manually.');
       setAddresses([]);
+      setShowAddressDropdown(false);
     } finally {
       setIsLoadingAddresses(false);
     }
   };
 
   const handleAddressSelect = (e: React.MouseEvent, address: Address) => {
-    e.preventDefault(); // Prevent any form submission
+    e.preventDefault();
     setFormData(prev => ({
       ...prev,
       location: address.SummaryAddress.replace(`, ${address.FormattedAddressLines.Postcode}`, '')
     }));
+    setShowAddressDropdown(false);
+    setAddresses([]);
   };
 
   useEffect(() => {
@@ -214,57 +220,48 @@ const ContactDetails: React.FC = () => {
     }
   }, [router.query]);
 
-  useEffect(() => {
-    const fetchVehicleDetails = async () => {
-      if (!vehicleRegString) {
-        setVehicleDetails(null)
-        return
-      }
-
-      setIsLoading(true)
-      setError(null)
-
-      try {
-        const response = await fetch(`https://uk1.ukvehicledata.co.uk/api/datapackage/VehicleData?v=2&api_nullitems=1&auth_apikey=6193cc7a-c1b2-469c-ad41-601c6faa294c&key_VRM=${vehicleRegString}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-
-        const data = await response.json()
-        console.log('Raw API response:', JSON.stringify(data, null, 2));
-
-        if (data.Response.StatusCode === "Success") {
-          const vehicleInfo = data.Response.DataItems;
-          console.log('Vehicle Info:', vehicleInfo);
-          
-          setVehicleDetails({
-            manufacturer: vehicleInfo.ClassificationDetails?.Dvla?.Make || 'Unknown',
-            model: vehicleInfo.ClassificationDetails?.Dvla?.Model || 'Unknown',
-            year: vehicleInfo.VehicleRegistration?.YearOfManufacture || 'Unknown',
-            colour: vehicleInfo.VehicleRegistration?.Colour || 'Unknown',
-            type: vehicleInfo.VehicleRegistration?.VehicleClass || 'Unknown',
-            style: vehicleInfo.SmmtDetails?.BodyStyle || 'Unknown',
-            doorPlan: `${vehicleInfo.TechnicalDetails?.Dimensions?.NumberOfDoors || '?'} Doors` || 'Unknown'
-          })
-        } else {
-          throw new Error('Failed to fetch vehicle data')
-        }
-      } catch (err) {
-        console.error('Error fetching vehicle details:', err)
-        setError('Failed to fetch vehicle details. Please try again.')
-        setVehicleDetails(null)
-      } finally {
-        setIsLoading(false)
-      }
+  const fetchVehicleDetails = async () => {
+    if (!vehicleReg) {
+      console.log('No vehicleReg provided');
+      setVehicleDetails(null)
+      return
     }
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch('/api/vehicle-lookup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ registration: vehicleReg }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setVehicleDetails(data.vehicleDetails);
+      } else {
+        throw new Error('Failed to fetch vehicle data');
+      }
+    } catch (err) {
+      console.error('Error fetching vehicle details:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch vehicle details');
+      setVehicleDetails(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
     fetchVehicleDetails()
-  }, [vehicleRegString])
+  }, [vehicleReg])
 
   const uploadArgicCodeToAirtable = async (quoteId: string, argicCode: string) => {
     try {
@@ -538,7 +535,7 @@ const ContactDetails: React.FC = () => {
                   </div>
 
                   <div className="mb-4">
-                    <label htmlFor="fullName" className="block mb-1 font-bold flex items-center gap-2">
+                    <label htmlFor="fullName" className="mb-1 font-bold flex items-center gap-2">
                       <User className="w-5 h-5 text-[#0FB8C1]" />
                       Full Name <span className="text-sm font-normal text-gray-500"></span>
                     </label>
@@ -554,7 +551,7 @@ const ContactDetails: React.FC = () => {
                   </div>
 
                   <div className="mb-4">
-                    <label htmlFor="email" className="block mb-1 font-bold flex items-center gap-2">
+                    <label htmlFor="email" className="mb-1 font-bold flex items-center gap-2">
                       <Mail className="w-5 h-5 text-[#0FB8C1]" />
                       Email Address <span className="text-sm font-normal text-gray-500">(For quote and booking details)</span>
                     </label>
@@ -571,7 +568,7 @@ const ContactDetails: React.FC = () => {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                     <div className="col-span-1">
-                      <label htmlFor="postcode" className="block mb-1 font-bold flex items-center gap-2">
+                      <label htmlFor="postcode" className="mb-1 font-bold flex items-center gap-2">
                         <MapPin className="w-5 h-5 text-[#0FB8C1]" />
                         Your Postcode <span className="text-sm font-normal text-gray-500">(To find nearest technician)</span>
                       </label>
@@ -586,7 +583,7 @@ const ContactDetails: React.FC = () => {
                       />
                     </div>
                     <div className="col-span-1">
-                      <label htmlFor="mobile" className="block mb-1 font-bold flex items-center gap-2">
+                      <label htmlFor="mobile" className="mb-1 font-bold flex items-center gap-2">
                         <Phone className="w-5 h-5 text-[#0FB8C1]" />
                         Mobile Number <span className="text-sm font-normal text-gray-500">(For appointment updates)</span>
                       </label>
@@ -625,7 +622,7 @@ const ContactDetails: React.FC = () => {
                   </div>
 
                   <div className="mb-4">
-                    <label htmlFor="location" className="block mb-1 font-bold flex items-center gap-2">
+                    <label htmlFor="location" className="mb-1 font-bold flex items-center gap-2">
                       <Home className="w-5 h-5 text-[#0FB8C1]" />
                       Vehicle Address <span className="text-sm font-normal text-gray-500">(Where repair will take place)</span>
                     </label>
@@ -644,7 +641,7 @@ const ContactDetails: React.FC = () => {
                     {addressError && (
                       <div className="mt-2 text-sm text-red-500">{addressError}</div>
                     )}
-                    {addresses.length > 0 && (
+                    {addresses.length > 0 && showAddressDropdown && (
                       <div className="mt-2 border rounded max-h-40 overflow-y-auto">
                         {addresses.map((address, index) => (
                           <button
@@ -663,7 +660,7 @@ const ContactDetails: React.FC = () => {
                   {paymentOption === 'insurance' && (
                     <>
                       <div className="mb-4">
-                        <label htmlFor="insuranceProvider" className="block mb-1 font-bold flex items-center gap-2">
+                        <label htmlFor="insuranceProvider" className="mb-1 font-bold flex items-center gap-2">
                           <Shield className="w-5 h-5 text-[#0FB8C1]" />
                           Name of Insurance Provider <span className="text-sm font-normal text-gray-500">(Must be listed with us)</span>
                         </label>
@@ -685,7 +682,7 @@ const ContactDetails: React.FC = () => {
 
                       <div className="grid grid-cols-2 gap-4 mb-4">
                         <div>
-                          <label htmlFor="policyNumber" className="block mb-1 font-bold flex items-center gap-2">
+                          <label htmlFor="policyNumber" className="mb-1 font-bold flex items-center gap-2">
                             <ClipboardList className="w-5 h-5 text-[#0FB8C1]" />
                             Policy Number <span className="text-sm font-normal text-gray-500">(Found on your insurance documents)</span>
                           </label>
@@ -700,7 +697,7 @@ const ContactDetails: React.FC = () => {
                           />
                         </div>
                         <div>
-                          <label htmlFor="incidentDate" className="block mb-1 font-bold flex items-center gap-2">
+                          <label htmlFor="incidentDate" className="mb-1 font-bold flex items-center gap-2">
                             <Calendar className="w-5 h-5 text-[#0FB8C1]" />
                             Incident Date <span className="text-sm font-normal text-gray-500">(When damage occurred)</span>
                           </label>
@@ -904,6 +901,18 @@ const ContactDetails: React.FC = () => {
                         </span>
                         <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded text-sm">
                           {vehicleDetails?.colour}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <div className="text-gray-500 text-sm uppercase font-bold mb-1 flex items-center gap-2">
+                        <ClipboardList className="w-4 h-4 text-[#0FB8C1]" />
+                        ARGIC CODE
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded text-sm">
+                          {vehicleRegString === 'HN11EYW' ? '2448AGNMV1B' : 'Failed To Fetch Argic'}
                         </span>
                       </div>
                     </div>

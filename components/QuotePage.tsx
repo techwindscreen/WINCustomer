@@ -146,6 +146,7 @@ const QuotePage: React.FC = () => {
   const [isExpired, setIsExpired] = useState(false);
   const [paymentType, setPaymentType] = useState<'full' | 'deposit' | 'split'>('full');
   const [isPriceBreakdownOpen, setIsPriceBreakdownOpen] = useState(false);
+  const [selectedBusiness, setSelectedBusiness] = useState<string>('');
 
   useEffect(() => {
     // Clear stored form data when reaching the quote page
@@ -425,7 +426,7 @@ const QuotePage: React.FC = () => {
                 {isLoading ? (
                   <div className="flex flex-col items-center justify-center py-12">
                     <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#0FB8C1]" />
-                    <p className="text-gray-600 mt-4">Calculating your quote...</p>
+                    <p className="text-gray-600 mt-4">Comparing prices from local technicians...</p>
                   </div>
                 ) : error ? (
                   <div className="text-center py-8">
@@ -454,324 +455,311 @@ const QuotePage: React.FC = () => {
                 ) : (
                   <div className="text-center">
                     <div className="mb-8">
-                      <h3 className="text-2xl font-bold text-gray-800 mb-2">Your Quote is Ready</h3>
-                      <p className="text-4xl font-bold text-[#0FB8C1] mb-4">£{quotePrice?.toFixed(2)}</p>
+                      <h3 className="text-2xl font-bold text-gray-800 mb-6">Compare Local Technician Quotes</h3>
                       
-                      <div className="text-sm text-gray-600 mb-4">
-                        {timeLeft > 0 ? (
-                          <div className="flex items-center justify-center space-x-2">
-                            <svg className="w-4 h-4 text-[#FF9B9B]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span className="text-[#FF9B9B]">Quote expires in <span className="font-bold">{formatTime(timeLeft)}</span></span>
-                          </div>
-                        ) : (
-                          <span className="text-red-500">Quote expired. Please refresh for a new quote.</span>
-                        )}
-                      </div>
-
-                      {/* Service Options Toggle */}
-                      <div className="inline-flex rounded-lg border border-gray-200 p-1 mb-8">
-                        <button
-                          onClick={() => handleDeliveryTypeChange('standard')}
-                          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                            deliveryType === 'standard'
-                              ? 'bg-[#FFF4CC] text-gray-800'
-                              : 'text-gray-500 hover:text-gray-700 hover:bg-[#FFF4CC]/50'
-                          }`}
-                        >
-                          Standard Service
-                        </button>
-                        <div className="relative mx-2">
-                          <div className="absolute -top-2.5 -right-2.5 z-10">
-                            <span className="flex h-6 w-6">
-                              <span className="animate-[ping_1.5s_cubic-bezier(0,0,0.2,1)_infinite] absolute inline-flex h-full w-full rounded-full bg-amber-300 opacity-40"></span>
-                              <span className="relative inline-flex rounded-full h-6 w-6 bg-gradient-to-r from-amber-300 to-amber-400 items-center justify-center shadow-sm">
-                                <svg 
-                                  className="w-3.5 h-3.5 text-amber-900" 
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path 
-                                    strokeLinecap="round" 
-                                    strokeLinejoin="round" 
-                                    strokeWidth="2.5" 
-                                    d="M13 10V3L4 14h7v7l9-11h-7z"
-                                  />
-                                </svg>
-                              </span>
-                            </span>
-                          </div>
-                          <button
-                            onClick={() => handleDeliveryTypeChange('express')}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors border-2 ${
-                              deliveryType === 'express'
-                                ? 'bg-[#FFF4CC] text-gray-800 border-[#FFE066]'
-                                : 'text-gray-500 hover:text-gray-700 hover:bg-[#FFF4CC]/50 border-gray-200'
-                            }`}
-                          >
-                            Express Service (+£90)
-                          </button>
-                          <div className="absolute -bottom-10 left-0 right-0">
-                            <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg px-3 py-2 shadow-sm border border-gray-100">
-                              <div className="flex items-center justify-center text-[10px]">
-                                <span className="text-gray-500 font-medium">Priority + VIP Service</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Quote Range Bar */}
-                    <div className="max-w-md mx-auto mb-8">
-                      {/* Simplified price headers */}
-                      <div className="flex justify-between text-sm text-gray-600 mb-4">
-                        <span>Lower Range</span>
-                        <span>Higher Range</span>
-                      </div>
-
-                      <div className="relative">
-                        {/* Main bar container */}
-                        <div className="relative h-3 bg-gray-100 rounded-full overflow-hidden shadow-inner">
-                          {/* Simplified gradient background */}
-                          <div className="absolute inset-0 bg-gradient-to-r from-green-400 via-yellow-400 to-red-400 opacity-20" />
-
-                          {/* Average marker */}
-                          <div 
-                            className="absolute w-0.5 h-4 bg-gray-400 top-1/2 -translate-y-1/2 transition-all duration-300"
-                            style={{ 
-                              left: `${((quoteRange.average - quoteRange.min) / (quoteRange.max - quoteRange.min)) * 100}%`,
-                              zIndex: 2 
-                            }}
-                          />
-
-                          {/* Simplified Quote marker */}
-                          <div 
-                            className="absolute w-6 h-6 bg-white rounded-full shadow transform -translate-x-1/2 -translate-y-1/2 transition-all duration-300"
-                            style={{ 
-                              left: `${((quotePrice || 0) - quoteRange.min) / (quoteRange.max - quoteRange.min) * 100}%`,
-                              top: '50%',
-                              zIndex: 3,
-                              border: '2px solid #0FB8C1',
-                            }}
-                          >
-                            {/* Price tooltip */}
-                            <div className="absolute -top-8 left-1/2 transform -translate-x-1/2">
-                              <span className="block text-sm font-medium bg-[#0FB8C1] text-white px-2 py-1 rounded whitespace-nowrap">
-                                Your Quote: £{quotePrice?.toFixed(2)}
-                              </span>
-                            </div>
-
-                            {/* Center dot */}
-                            <div className="w-2 h-2 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#0FB8C1]" />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Price range values */}
-                      <div className="flex justify-between text-xs text-gray-500 mt-2">
-                        <span>£{quoteRange.min}</span>
-                        <span className="text-gray-400">Average: £{quoteRange.average}</span>
-                        <span>£{quoteRange.max}</span>
-                      </div>
-
-                      {/* Simplified status indicator */}
-                      <div className="text-center mt-4">
-                        <span className="text-sm font-medium">
-                          {(quotePrice || 0) < quoteRange.average ? (
-                            <span className="text-green-600">Below market average - Great value!</span>
-                          ) : (quotePrice || 0) === quoteRange.average ? (
-                            <span className="text-gray-600">Market average price</span>
-                          ) : (
-                            <span className="text-blue-600">Premium service quote</span>
-                          )}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Quote Range Bar and Price Breakdown */}
-                    {quotePrice && !isExpired && (
-                      <div>
-                        {/* Price Breakdown Box */}
-                        <div className="max-w-md mx-auto bg-gray-50 rounded-xl p-6 mb-8">
-                          <button 
-                            onClick={() => setIsPriceBreakdownOpen(!isPriceBreakdownOpen)} 
-                            className="w-full flex justify-between items-center"
-                          >
-                            <h3 className="text-xl text-gray-800">Price Breakdown</h3>
-                            <svg 
-                              className={`w-5 h-5 text-gray-600 transform transition-transform duration-200 ${
-                                isPriceBreakdownOpen ? 'rotate-180' : ''
-                              }`} 
-                              fill="none" 
-                              stroke="currentColor" 
-                              viewBox="0 0 24 24"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
-
-                          {isPriceBreakdownOpen && (
-                            <div className="space-y-4 mt-4">
-                              {/* Selected Windows */}
-                              <div className="space-y-3">
-                                {parsedData.selectedWindows.map((windowId: string) => (
-                                  <div key={windowId} className="flex justify-between items-center py-2.5 border-b border-gray-200 last:border-b-0">
-                                    <div className="flex items-center space-x-2">
-                                      <span className="text-gray-700">
-                                        {windowNameMapping[windowId]}
-                                      </span>
-                                      {parsedData.windowDamage[windowId] && (
-                                        <span className="ml-2 text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full whitespace-nowrap">
-                                          {parsedData.windowDamage[windowId]}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <span className="font-medium text-gray-900">
-                                      £{quotePrice ? Math.round((quotePrice - (deliveryType === 'express' ? 90 : 0)) / parsedData.selectedWindows.length) : '0'}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                              
-                              {/* Delivery Fee */}
-                              {deliveryType === 'express' && (
-                                <div className="flex justify-between items-center py-3 border-t border-gray-200">
-                                  <div className="flex items-center">
-                                    <span className="text-gray-700">Express Service</span>
-                                    <span className="ml-2 text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
-                                      24h
-                                    </span>
-                                  </div>
-                                  <span className="font-medium text-gray-900">£90</span>
-                                </div>
-                              )}
-
-                              {/* Total */}
-                              <div className="flex justify-between items-center pt-4 mt-2 border-t border-gray-300">
-                                <div>
-                                  <span className="text-lg font-bold text-gray-800">Total</span>
-                                  <p className="text-xs text-gray-500 mt-0.5">Including VAT</p>
-                                </div>
-                                <span className="text-2xl font-bold text-[#0FB8C1]">
-                                  £{quotePrice || '0'}
+                      {quotePrice && !isExpired && (
+                        <div>
+                          {/* Company Comparison Section */}
+                          <div className="flex flex-col gap-3 mb-8">
+                            {/* Auto Bond Co */}
+                            <div className="relative">
+                              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-10">
+                                <span className="bg-[#82D1D5] text-white px-3 py-0.5 rounded-full text-xs font-medium">
+                                  Best Choice
                                 </span>
                               </div>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedBusiness('Auto Bond Co')}
+                                className={`w-full text-left flex items-center justify-between p-4 rounded-xl transition-all
+                                  ${selectedBusiness === 'Auto Bond Co' 
+                                    ? 'bg-[#F8FDFD] border-2 border-[#82D1D5] shadow-md' 
+                                    : 'bg-white border border-gray-200 hover:border-[#82D1D5] hover:shadow-sm'
+                                  }`}
+                              >
+                                <div className="flex items-center gap-4">
+                                  <div className="w-10 h-10 bg-[#F0F9FA] rounded-lg flex items-center justify-center">
+                                    <svg className="w-5 h-5 text-[#82D1D5]" viewBox="0 0 24 24" fill="currentColor">
+                                      <path d="M11.47 3.84a.75.75 0 011.06 0l8.69 8.69a.75.75 0 101.06-1.06l-8.689-8.69a2.25 2.25 0 00-3.182 0l-8.69 8.69a.75.75 0 001.061 1.06l8.69-8.69z" />
+                                    </svg>
+                                  </div>
+                                  <div>
+                                    <h3 className="text-lg font-semibold text-gray-800">Auto Bond Co</h3>
+                                    <div className="flex items-center gap-4">
+                                      <span className="text-sm text-gray-500">1 Day Delivery</span>
+                                      <div className="flex items-center">
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                          <svg key={star} className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                          </svg>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-2xl font-bold text-gray-800">£695.00</span>
+                                  <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors
+                                    ${selectedBusiness === 'Auto Bond Co' 
+                                      ? 'bg-[#82D1D5] text-white' 
+                                      : 'bg-gray-200 text-gray-600'
+                                    }`}>
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      {selectedBusiness === 'Auto Bond Co' 
+                                        ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                        : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                                      }
+                                    </svg>
+                                  </div>
+                                </div>
+                              </button>
                             </div>
-                          )}
+
+                            {/* Windscreen Wizard */}
+                            <button
+                              type="button"
+                              onClick={() => setSelectedBusiness('Windscreen Wizard')}
+                              className={`w-full text-left flex items-center justify-between p-4 rounded-xl transition-all
+                                ${selectedBusiness === 'Windscreen Wizard' 
+                                  ? 'bg-[#F8FDFD] border-2 border-[#82D1D5] shadow-md' 
+                                  : 'bg-white border border-gray-200 hover:border-[#82D1D5] hover:shadow-sm'
+                                }`}
+                            >
+                              <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 bg-[#F8FDFD] rounded-lg flex items-center justify-center">
+                                  <svg className="w-5 h-5 text-[#82D1D5]" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M11.47 3.84a.75.75 0 011.06 0l8.69 8.69a.75.75 0 101.06-1.06l-8.689-8.69a2.25 2.25 0 00-3.182 0l-8.69 8.69a.75.75 0 001.061 1.06l8.69-8.69z" />
+                                  </svg>
+                                </div>
+                                <div>
+                                  <h3 className="text-lg font-semibold text-gray-800">Windscreen Wizard</h3>
+                                  <div className="flex items-center gap-4">
+                                    <span className="text-sm text-gray-500">1 Day Delivery</span>
+                                    <div className="flex items-center">
+                                      {[1, 2, 3, 4, 5].map((star) => (
+                                        <svg key={star} className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                        </svg>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-2xl font-bold text-gray-800">£795.00</span>
+                                <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors
+                                  ${selectedBusiness === 'Windscreen Wizard' 
+                                    ? 'bg-[#82D1D5] text-white' 
+                                    : 'bg-gray-200 text-gray-600'
+                                  }`}>
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    {selectedBusiness === 'Windscreen Wizard' 
+                                      ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                      : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                                    }
+                                  </svg>
+                                </div>
+                              </div>
+                            </button>
+
+                            {/* Glass Express */}
+                            <button
+                              type="button"
+                              onClick={() => setSelectedBusiness('Glass Express')}
+                              className={`w-full text-left flex items-center justify-between p-4 rounded-xl transition-all
+                                ${selectedBusiness === 'Glass Express' 
+                                  ? 'bg-[#F8FDFD] border-2 border-[#82D1D5] shadow-md' 
+                                  : 'bg-white border border-gray-200 hover:border-[#82D1D5] hover:shadow-sm'
+                                }`}
+                            >
+                              <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 bg-[#F8FDFD] rounded-lg flex items-center justify-center">
+                                  <svg className="w-5 h-5 text-[#82D1D5]" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M11.47 3.84a.75.75 0 011.06 0l8.69 8.69a.75.75 0 101.06-1.06l-8.689-8.69a2.25 2.25 0 00-3.182 0l-8.69 8.69a.75.75 0 001.061 1.06l8.69-8.69z" />
+                                  </svg>
+                                </div>
+                                <div>
+                                  <h3 className="text-lg font-semibold text-gray-800">Glass Express</h3>
+                                  <div className="flex items-center gap-4">
+                                    <span className="text-sm text-gray-500">2 Day Delivery</span>
+                                    <div className="flex items-center">
+                                      {[1, 2, 3, 4].map((star) => (
+                                        <svg key={star} className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                        </svg>
+                                      ))}
+                                      <svg className="w-4 h-4 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                      </svg>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-2xl font-bold text-gray-800">£845.00</span>
+                                <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors
+                                  ${selectedBusiness === 'Glass Express' 
+                                    ? 'bg-[#82D1D5] text-white' 
+                                    : 'bg-gray-200 text-gray-600'
+                                  }`}>
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    {selectedBusiness === 'Glass Express' 
+                                      ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                      : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                                    }
+                                  </svg>
+                                </div>
+                              </div>
+                            </button>
+                          </div>
+
+                          {/* Price Breakdown Box */}
+                          <div className="max-w-md mx-auto bg-gray-50 rounded-xl p-6 mb-8">
+                            <button
+                              onClick={() => setIsPriceBreakdownOpen(!isPriceBreakdownOpen)}
+                              className="w-full flex items-center justify-between text-left"
+                            >
+                              <span className="font-semibold">Price Breakdown</span>
+                              <svg
+                                className={`w-5 h-5 transform transition-transform ${isPriceBreakdownOpen ? 'rotate-180' : ''}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+
+                            {isPriceBreakdownOpen && (
+                              <div className="mt-4 space-y-2">
+                                <div className="flex justify-between text-sm">
+                                  <span>Base Price</span>
+                                  <span>£{(quotePrice * 0.7).toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span>Labor</span>
+                                  <span>£{(quotePrice * 0.2).toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span>Materials</span>
+                                  <span>£{(quotePrice * 0.1).toFixed(2)}</span>
+                                </div>
+                                <div className="pt-2 border-t flex justify-between text-sm">
+                                  <span>Subtotal</span>
+                                  <span>£{Number(quotePrice).toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span>VAT (20%)</span>
+                                  <span>£{(quotePrice * 0.2).toFixed(2)}</span>
+                                </div>
+                                <div className="pt-2 border-t flex justify-between font-semibold">
+                                  <span>Total (inc. VAT)</span>
+                                  <span>£{(quotePrice * 1.2).toFixed(2)}</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Payment Options */}
+                          <div className="mb-8">
+                            <div className="grid grid-cols-3 gap-4">
+                              {/* Pay in Full Option */}
+                              <button
+                                onClick={() => setPaymentType('full')}
+                                className={`relative p-5 rounded-xl border-2 transition-all hover:shadow-md ${
+                                  paymentType === 'full' 
+                                    ? 'border-[#0FB8C1] bg-[#F8FDFD]' 
+                                    : 'border-gray-200 hover:border-gray-300'
+                                }`}
+                              >
+                                <div className="absolute -top-3 left-4">
+                                  <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium">
+                                    Save 5%
+                                  </span>
+                                </div>
+                                <div className="flex flex-col h-full pt-2">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <svg className="w-5 h-5 text-[#0FB8C1]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 8h6m-5 0a3 3 0 110 6H9l3 3m-3-6h6m6 1a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <div className="font-semibold text-gray-800">Pay in Full</div>
+                                  </div>
+                                  <div className="text-sm text-gray-500 mb-3">One-time payment</div>
+                                  <div className="text-2xl font-bold text-gray-800 mb-1">
+                                    £{((quotePrice || 0) * 0.95).toFixed(2)}
+                                  </div>
+                                  <div className="text-xs text-gray-500 line-through">
+                                    £{quotePrice?.toFixed(2)}
+                                  </div>
+                                </div>
+                              </button>
+                              
+                              {/* Pay Deposit Option */}
+                              <button
+                                onClick={() => setPaymentType('deposit')}
+                                className={`relative p-5 rounded-xl border-2 transition-all hover:shadow-md ${
+                                  paymentType === 'deposit' 
+                                    ? 'border-[#0FB8C1] bg-[#F8FDFD]' 
+                                    : 'border-gray-200 hover:border-gray-300'
+                                }`}
+                              >
+                                <div className="absolute -top-3 left-4">
+                                  <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">
+                                    Most Popular
+                                  </span>
+                                </div>
+                                <div className="flex flex-col h-full pt-2">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <svg className="w-5 h-5 text-[#0FB8C1]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                    <div className="font-semibold text-gray-800">Pay Deposit</div>
+                                  </div>
+                                  <div className="text-sm text-gray-500 mb-3">20% now, rest on completion</div>
+                                  <div className="text-2xl font-bold text-gray-800 mb-1">
+                                    £{((quotePrice || 0) * 0.2).toFixed(2)}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    + £{((quotePrice || 0) * 0.8).toFixed(2)} on completion
+                                  </div>
+                                </div>
+                              </button>
+                              
+                              {/* Split Payment Option */}
+                              <button
+                                onClick={() => setPaymentType('split')}
+                                className={`relative p-5 rounded-xl border-2 transition-all hover:shadow-md ${
+                                  paymentType === 'split' 
+                                    ? 'border-[#0FB8C1] bg-[#F8FDFD]' 
+                                    : 'border-gray-200 hover:border-gray-300'
+                                }`}
+                              >
+                                <div className="absolute -top-3 left-4">
+                                  <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-medium">
+                                    0% Interest
+                                  </span>
+                                </div>
+                                <div className="flex flex-col h-full pt-2">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <svg className="w-5 h-5 text-[#0FB8C1]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                    </svg>
+                                    <div className="font-semibold text-gray-800">Split Payment</div>
+                                  </div>
+                                  <div className="text-sm text-gray-500 mb-3">3 monthly payments</div>
+                                  <div className="text-2xl font-bold text-gray-800 mb-1">
+                                    £{((quotePrice || 0) / 3).toFixed(2)}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    per month for 3 months
+                                  </div>
+                                </div>
+                              </button>
+                            </div>
+                          </div>
                         </div>
-
-                        {/* Payment Options */}
-                        <div className="flex flex-col space-y-3 max-w-md mx-auto mt-8">
-                          <h3 className="text-xl font-bold text-gray-800 mb-4">Choose Payment Option</h3>
-                          <div 
-                            onClick={() => setPaymentType('full')}
-                            className={`p-4 border rounded-lg cursor-pointer transition-all duration-200 transform hover:-translate-y-0.5 hover:shadow w-full ${
-                              paymentType === 'full' 
-                                ? 'border-[#0FB8C1] bg-gradient-to-b from-[#F7FDFD] to-white shadow-sm' 
-                                : 'border-gray-200 hover:border-[#0FB8C1] bg-white'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-2">
-                                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                                  paymentType === 'full' ? 'border-[#0FB8C1]' : 'border-gray-300'
-                                }`}>
-                                  {paymentType === 'full' && <div className="w-2 h-2 rounded-full bg-[#0FB8C1]" />}
-                                </div>
-                                <div>
-                                  <h4 className="font-medium text-gray-800">Pay in Full</h4>
-                                  <div className="bg-green-50 text-green-700 text-xs py-0.5 px-2 rounded-full mt-1">
-                                    Save 5% Today
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-xl font-bold text-[#0FB8C1]">
-                                  £{((quotePrice * 0.95) || 0).toFixed(2)}
-                                </p>
-                                <p className="text-xs text-gray-500">Total payment</p>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div 
-                            onClick={() => setPaymentType('deposit')}
-                            className={`p-4 border rounded-lg cursor-pointer transition-all duration-200 transform hover:-translate-y-0.5 hover:shadow w-full ${
-                              paymentType === 'deposit' 
-                                ? 'border-[#0FB8C1] bg-gradient-to-b from-[#F7FDFD] to-white shadow-sm' 
-                                : 'border-gray-200 hover:border-[#0FB8C1] bg-white'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-2">
-                                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                                  paymentType === 'deposit' ? 'border-[#0FB8C1]' : 'border-gray-300'
-                                }`}>
-                                  {paymentType === 'deposit' && <div className="w-2 h-2 rounded-full bg-[#0FB8C1]" />}
-                                </div>
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <h4 className="font-medium text-gray-800">Pay Deposit</h4>
-                                    <span className="text-xs text-red-500 font-medium bg-red-50 px-2 py-0.5 rounded-full">
-                                      Non-Refundable
-                                    </span>
-                                  </div>
-                                  <div className="bg-blue-50 text-blue-700 text-xs py-0.5 px-2 rounded-full mt-1">
-                                    20% Deposit
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-xl font-bold text-[#0FB8C1]">
-                                  £{((quotePrice * 0.2) || 0).toFixed(2)}
-                                </p>
-                                <p className="text-xs text-gray-500">Pay now</p>
-                                <p className="text-xs text-gray-500 mt-1">
-                                  + £{((quotePrice * 0.8) || 0).toFixed(2)} after service
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div 
-                            onClick={() => setPaymentType('split')}
-                            className={`p-4 border rounded-lg cursor-pointer transition-all duration-200 transform hover:-translate-y-0.5 hover:shadow w-full ${
-                              paymentType === 'split' 
-                                ? 'border-[#0FB8C1] bg-gradient-to-b from-[#F7FDFD] to-white shadow-sm' 
-                                : 'border-gray-200 hover:border-[#0FB8C1] bg-white'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-2">
-                                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                                  paymentType === 'split' ? 'border-[#0FB8C1]' : 'border-gray-300'
-                                }`}>
-                                  {paymentType === 'split' && <div className="w-2 h-2 rounded-full bg-[#0FB8C1]" />}
-                                </div>
-                                <div>
-                                  <h4 className="font-medium text-gray-800">Split Payment</h4>
-                                  <div className="bg-purple-50 text-purple-700 text-xs py-0.5 px-2 rounded-full mt-1">
-                                    3 Monthly Payments
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-xl font-bold text-[#0FB8C1]">
-                                  £{((quotePrice / 3) || 0).toFixed(2)}
-                                </p>
-                                <p className="text-xs text-gray-500">per month</p>
-                                <p className="text-xs text-gray-500 mt-1">
-                                  Total: £{(quotePrice || 0).toFixed(2)}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -889,7 +877,7 @@ const QuotePage: React.FC = () => {
                           paymentMethodCreation: 'manual',
                           paymentMethodTypes: paymentType === 'split' 
                             ? ['klarna', 'afterpay_clearpay']
-                            : ['card', 'klarna', 'afterpay_clearpay'],
+                            : ['card'],
                         }}
                       >
                         <CheckoutForm 
@@ -1200,7 +1188,7 @@ const QuotePage: React.FC = () => {
                           paymentMethodCreation: 'manual',
                           paymentMethodTypes: paymentType === 'split' 
                             ? ['klarna', 'afterpay_clearpay']
-                            : ['card', 'klarna', 'afterpay_clearpay'],
+                            : ['card'],
                         }}
                       >
                         <CheckoutForm 
