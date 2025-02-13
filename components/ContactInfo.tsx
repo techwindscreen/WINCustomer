@@ -904,6 +904,18 @@ const ContactDetails: React.FC = () => {
                         </span>
                       </div>
                     </div>
+
+                    <div className="mt-4">
+                      <div className="text-gray-500 text-sm uppercase font-bold mb-1 flex items-center gap-2">
+                        <ClipboardList className="w-4 h-4 text-[#0FB8C1]" />
+                        ARGIC CODE
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded text-sm">
+                          {vehicleRegString === 'HN11EYW' ? '2448AGNMV1B' : 'Failed To Fetch Argic'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
