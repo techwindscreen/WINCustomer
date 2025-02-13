@@ -342,6 +342,19 @@ const QuotePage: React.FC = () => {
     },
   };
 
+  // Derived pricing calculations (recalculate on every render)
+  const basePrice = quotePrice ? (quotePrice * 0.7).toFixed(2) : '0.00';
+  const labour = quotePrice ? (quotePrice * 0.2).toFixed(2) : '0.00';
+  const materials = quotePrice ? (quotePrice * 0.1).toFixed(2) : '0.00';
+  const subtotal = quotePrice ? quotePrice.toFixed(2) : '0.00';
+  const vat = quotePrice ? (quotePrice * 0.2).toFixed(2) : '0.00';
+  const totalIncVat = quotePrice ? (quotePrice * 1.2).toFixed(2) : '0.00';
+
+  const fullPaymentPrice = quotePrice ? (quotePrice * 0.95).toFixed(2) : '0.00';
+  const depositPaymentPrice = quotePrice ? (quotePrice * 0.2).toFixed(2) : '0.00';
+  const remainingOnCompletion = quotePrice ? (quotePrice * 0.8).toFixed(2) : '0.00';
+  const splitPaymentPrice = quotePrice ? (quotePrice / 3).toFixed(2) : '0.00';
+
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-white to-gray-50">
       {/* Enhanced Header */}
@@ -634,27 +647,27 @@ const QuotePage: React.FC = () => {
                               <div className="mt-4 space-y-2">
                                 <div className="flex justify-between text-sm">
                                   <span>Base Price</span>
-                                  <span>£{(quotePrice * 0.7).toFixed(2)}</span>
+                                  <span>£{basePrice}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                   <span>Labour</span>
-                                  <span>£{(quotePrice * 0.2).toFixed(2)}</span>
+                                  <span>£{labour}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                   <span>Materials</span>
-                                  <span>£{(quotePrice * 0.1).toFixed(2)}</span>
+                                  <span>£{materials}</span>
                                 </div>
                                 <div className="pt-2 border-t flex justify-between text-sm">
                                   <span>Subtotal</span>
-                                  <span>£{Number(quotePrice).toFixed(2)}</span>
+                                  <span>£{subtotal}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                   <span>VAT (20%)</span>
-                                  <span>£{(quotePrice * 0.2).toFixed(2)}</span>
+                                  <span>£{vat}</span>
                                 </div>
                                 <div className="pt-2 border-t flex justify-between font-semibold">
                                   <span>Total (inc. VAT)</span>
-                                  <span>£{(quotePrice * 1.2).toFixed(2)}</span>
+                                  <span>£{totalIncVat}</span>
                                 </div>
                               </div>
                             )}
@@ -667,8 +680,8 @@ const QuotePage: React.FC = () => {
                               <button
                                 onClick={() => setPaymentType('full')}
                                 className={`relative p-5 rounded-xl border-2 transition-all hover:shadow-md ${
-                                  paymentType === 'full' 
-                                    ? 'border-[#0FB8C1] bg-[#F8FDFD]' 
+                                  paymentType === 'full'
+                                    ? 'border-[#0FB8C1] bg-[#F8FDFD]'
                                     : 'border-gray-200 hover:border-gray-300'
                                 }`}
                               >
@@ -686,10 +699,10 @@ const QuotePage: React.FC = () => {
                                   </div>
                                   <div className="text-sm text-gray-500 mb-3">One-time payment</div>
                                   <div className="text-2xl font-bold text-gray-800 mb-1">
-                                    £{((quotePrice || 0) * 0.95).toFixed(2)}
+                                    £{fullPaymentPrice}
                                   </div>
                                   <div className="text-xs text-gray-500 line-through">
-                                    £{quotePrice?.toFixed(2)}
+                                    £{quotePrice ? quotePrice.toFixed(2) : '0.00'}
                                   </div>
                                 </div>
                               </button>
@@ -698,8 +711,8 @@ const QuotePage: React.FC = () => {
                               <button
                                 onClick={() => setPaymentType('deposit')}
                                 className={`relative p-5 rounded-xl border-2 transition-all hover:shadow-md ${
-                                  paymentType === 'deposit' 
-                                    ? 'border-[#0FB8C1] bg-[#F8FDFD]' 
+                                  paymentType === 'deposit'
+                                    ? 'border-[#0FB8C1] bg-[#F8FDFD]'
                                     : 'border-gray-200 hover:border-gray-300'
                                 }`}
                               >
@@ -717,10 +730,10 @@ const QuotePage: React.FC = () => {
                                   </div>
                                   <div className="text-sm text-gray-500 mb-3">20% now, rest on completion</div>
                                   <div className="text-2xl font-bold text-gray-800 mb-1">
-                                    £{((quotePrice || 0) * 0.2).toFixed(2)}
+                                    £{depositPaymentPrice}
                                   </div>
                                   <div className="text-xs text-gray-500">
-                                    + £{((quotePrice || 0) * 0.8).toFixed(2)} on completion
+                                    + £{remainingOnCompletion} on completion
                                   </div>
                                 </div>
                               </button>
@@ -729,8 +742,8 @@ const QuotePage: React.FC = () => {
                               <button
                                 onClick={() => setPaymentType('split')}
                                 className={`relative p-5 rounded-xl border-2 transition-all hover:shadow-md ${
-                                  paymentType === 'split' 
-                                    ? 'border-[#0FB8C1] bg-[#F8FDFD]' 
+                                  paymentType === 'split'
+                                    ? 'border-[#0FB8C1] bg-[#F8FDFD]'
                                     : 'border-gray-200 hover:border-gray-300'
                                 }`}
                               >
@@ -748,7 +761,7 @@ const QuotePage: React.FC = () => {
                                   </div>
                                   <div className="text-sm text-gray-500 mb-3">3 monthly payments</div>
                                   <div className="text-2xl font-bold text-gray-800 mb-1">
-                                    £{((quotePrice || 0) / 3).toFixed(2)}
+                                    £{splitPaymentPrice}
                                   </div>
                                   <div className="text-xs text-gray-500">
                                     per month for 3 months
