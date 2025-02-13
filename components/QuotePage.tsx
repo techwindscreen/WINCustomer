@@ -637,7 +637,7 @@ const QuotePage: React.FC = () => {
                                   <span>£{(quotePrice * 0.7).toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
-                                  <span>Labor</span>
+                                  <span>Labour</span>
                                   <span>£{(quotePrice * 0.2).toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
