@@ -2,9 +2,8 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/": "pages/index.js",
   "/damage-location": "pages/damage-location.js",
-  "/api/vehicle-lookup": "pages/api/vehicle-lookup.js",
-  "/api/upload-vehicle-details": "pages/api/upload-vehicle-details.js",
-  "/contact-info": "pages/contact-info.js"
+  "/contact-info": "pages/contact-info.js",
+  "/quote": "pages/quote.js",
+  "/": "pages/index.js"
 }

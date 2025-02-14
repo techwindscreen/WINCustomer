@@ -148,6 +148,19 @@ const QuotePage: React.FC = () => {
   const [isPriceBreakdownOpen, setIsPriceBreakdownOpen] = useState(false);
   const [selectedBusiness, setSelectedBusiness] = useState<string>('');
 
+  // Add a mapping for each business's price
+  const businessPrices: { [key: string]: number } = {
+    "Auto Bond Co": 695,
+    "Windscreen Wizard": 795,
+    "Glass Express": 845,
+  };
+
+  // Create a function that updates the selected business and the main quotePrice
+  const handleBusinessChange = (business: string) => {
+    setSelectedBusiness(business);
+    setQuotePrice(businessPrices[business]);
+  };
+
   useEffect(() => {
     // Clear stored form data when reaching the quote page
     localStorage.removeItem('windscreenCompareData');
@@ -483,7 +496,7 @@ const QuotePage: React.FC = () => {
                               </div>
                               <button
                                 type="button"
-                                onClick={() => setSelectedBusiness('Auto Bond Co')}
+                                onClick={() => handleBusinessChange('Auto Bond Co')}
                                 className={`w-full text-left flex items-center justify-between p-4 rounded-xl transition-all
                                   ${selectedBusiness === 'Auto Bond Co' 
                                     ? 'bg-[#F8FDFD] border-2 border-[#82D1D5] shadow-md' 
@@ -511,18 +524,15 @@ const QuotePage: React.FC = () => {
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                  <span className="text-2xl font-bold text-gray-800">£695.00</span>
+                                  <span className="text-2xl font-bold text-gray-800">£{businessPrices["Auto Bond Co"].toFixed(2)}</span>
                                   <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors
                                     ${selectedBusiness === 'Auto Bond Co' 
                                       ? 'bg-[#82D1D5] text-white' 
                                       : 'bg-gray-200 text-gray-600'
                                     }`}>
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      {selectedBusiness === 'Auto Bond Co' 
-                                        ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                                        : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                                      }
-                                    </svg>
+                                    {selectedBusiness === 'Auto Bond Co' 
+                                      ? <svg /* your active SVG icon */></svg>
+                                      : <svg /* your inactive SVG icon */></svg>}
                                   </div>
                                 </div>
                               </button>
@@ -531,7 +541,7 @@ const QuotePage: React.FC = () => {
                             {/* Windscreen Wizard */}
                             <button
                               type="button"
-                              onClick={() => setSelectedBusiness('Windscreen Wizard')}
+                              onClick={() => handleBusinessChange('Windscreen Wizard')}
                               className={`w-full text-left flex items-center justify-between p-4 rounded-xl transition-all
                                 ${selectedBusiness === 'Windscreen Wizard' 
                                   ? 'bg-[#F8FDFD] border-2 border-[#82D1D5] shadow-md' 
@@ -559,18 +569,15 @@ const QuotePage: React.FC = () => {
                                 </div>
                               </div>
                               <div className="flex items-center gap-3">
-                                <span className="text-2xl font-bold text-gray-800">£795.00</span>
+                                <span className="text-2xl font-bold text-gray-800">£{businessPrices["Windscreen Wizard"].toFixed(2)}</span>
                                 <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors
                                   ${selectedBusiness === 'Windscreen Wizard' 
                                     ? 'bg-[#82D1D5] text-white' 
                                     : 'bg-gray-200 text-gray-600'
                                   }`}>
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    {selectedBusiness === 'Windscreen Wizard' 
-                                      ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                                      : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                                    }
-                                  </svg>
+                                  {selectedBusiness === 'Windscreen Wizard'
+                                    ? <svg /* your active SVG icon */></svg>
+                                    : <svg /* your inactive SVG icon */></svg>}
                                 </div>
                               </div>
                             </button>
@@ -578,7 +585,7 @@ const QuotePage: React.FC = () => {
                             {/* Glass Express */}
                             <button
                               type="button"
-                              onClick={() => setSelectedBusiness('Glass Express')}
+                              onClick={() => handleBusinessChange('Glass Express')}
                               className={`w-full text-left flex items-center justify-between p-4 rounded-xl transition-all
                                 ${selectedBusiness === 'Glass Express' 
                                   ? 'bg-[#F8FDFD] border-2 border-[#82D1D5] shadow-md' 
@@ -609,18 +616,15 @@ const QuotePage: React.FC = () => {
                                 </div>
                               </div>
                               <div className="flex items-center gap-3">
-                                <span className="text-2xl font-bold text-gray-800">£845.00</span>
+                                <span className="text-2xl font-bold text-gray-800">£{businessPrices["Glass Express"].toFixed(2)}</span>
                                 <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors
                                   ${selectedBusiness === 'Glass Express' 
                                     ? 'bg-[#82D1D5] text-white' 
                                     : 'bg-gray-200 text-gray-600'
                                   }`}>
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    {selectedBusiness === 'Glass Express' 
-                                      ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                                      : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                                    }
-                                  </svg>
+                                  {selectedBusiness === 'Glass Express'
+                                    ? <svg /* your active SVG icon */></svg>
+                                    : <svg /* your inactive SVG icon */></svg>}
                                 </div>
                               </div>
                             </button>
