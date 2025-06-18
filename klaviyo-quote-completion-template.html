@@ -1,0 +1,216 @@
+<html>
+  <body>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f9f9f9; padding: 20px;">
+            <!-- Header -->
+      <div style="background-color: white; color: #333; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; border-bottom: 2px solid #0FB8C1;">        
+        <img alt="WindscreenCompare Logo" src="https://d3k81ch9hvuctc.cloudfront.net/company/XjdccL/images/5ca10ab9-79c7-4755-af6e-07ffff417b0a.png" style="max-width: 200px; height: auto; margin-bottom: 10px;"/>
+        <h1 style="margin: 0; font-size: 24px; color: #0FB8C1;">
+          WindscreenCompare
+        </h1>
+        <p style="margin: 5px 0 0 0; font-size: 16px; color: #666;">
+          Your windscreen replacement is booked!
+        </p>
+      </div>
+
+      <!-- Content -->
+      <div style="background-color: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <!-- Confirmation Message -->
+        <h2 style="color: #0FB8C1; margin-top: 0; font-size: 20px; margin-bottom: 20px;">
+          Appointment Confirmed!
+        </h2>
+        <p style="color: #333; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+          Great news, {{event.user_name}}! Your windscreen replacement appointment has been confirmed. Here are all the details you need to know.
+        </p>
+
+        <!-- Appointment Details -->
+        <div style="background-color: #e8f8f9; padding: 20px; border-radius: 6px; margin-bottom: 25px; border: 2px solid #0FB8C1;">
+          <h3 style="color: #0FB8C1; margin-top: 0; font-size: 18px; margin-bottom: 15px;">
+            📅 Appointment Details
+          </h3>
+          <div style="font-size: 16px; line-height: 1.8;">
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Date:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.preferred_date}}</span>
+            </p>
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Time:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.preferred_time}}</span>
+            </p>
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Location:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.user_location}}</span>
+            </p>
+            <p style="margin: 0;">
+              <strong style="color: #333;">Service Type:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.appointment_type|default:"Mobile"|title}} Service</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- Technician Details -->
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 25px;">
+          <h3 style="color: #0FB8C1; margin-top: 0; font-size: 18px; margin-bottom: 15px;">
+            👨&zwj;🔧 Your Technician
+          </h3>
+          <div style="font-size: 16px; line-height: 1.8;">
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Name:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.technician_name|default:"Will be assigned soon"}}</span>
+            </p>
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Phone:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.technician_phone|default:"Will contact you 1 hour before"}}</span>
+            </p>
+            <p style="margin: 0;">
+              <strong style="color: #333;">Experience:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.technician_experience|default:"5+"}} years</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- Vehicle & Service Summary -->
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 25px;">
+          <h3 style="color: #0FB8C1; margin-top: 0; font-size: 18px; margin-bottom: 15px;">
+            🚗 Service Summary
+          </h3>
+          <div style="font-size: 16px; line-height: 1.8;">
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Vehicle:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.vehicle_registration}} ({{event.vehicle_make|default:"Your vehicle"}} {{event.vehicle_model|default:""}})</span>
+            </p>
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Glass Type:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.glass_type}}</span>
+            </p>
+            <p style="margin: 0;">
+              <strong style="color: #333;">Booking Reference:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.booking_reference|default:event.quote_id}}</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- Price Breakdown -->
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 25px;">
+          <h3 style="color: #0FB8C1; margin-top: 0; font-size: 18px; margin-bottom: 15px;">
+            💰 Price Breakdown
+          </h3>
+          <div style="font-size: 14px; line-height: 1.6;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+              <span style="color: #333;">Glass Cost:</span>
+              <span style="color: #333; font-weight: 600;">{{event.glass_price|default:"Included"}}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+              <span style="color: #333;">Fitting Cost:</span>
+              <span style="color: #333; font-weight: 600;">{{event.fitting_price|default:"Included"}}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+              <span style="color: #333;">VAT:</span>
+              <span style="color: #333; font-weight: 600;">{{event.vat_amount|default:"Included"}}</span>
+            </div>
+            <hr style="border: none; border-top: 1px solid #dee2e6; margin: 15px 0;">
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: #0FB8C1; font-weight: bold; font-size: 16px;">Total:</span>
+              <span style="color: #0FB8C1; font-weight: bold; font-size: 16px;">{{event.total_price|default:event.quote_price}}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment Information -->
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 25px;">
+          <h3 style="color: #0FB8C1; margin-top: 0; font-size: 18px; margin-bottom: 15px;">
+            💳 Payment Details
+          </h3>
+          <div style="font-size: 16px; line-height: 1.8;">
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Payment Method:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.payment_method|default:"To be confirmed"|title}}</span>
+            </p>
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Payment Type:</strong> 
+              <span style="color: #0FB8C1; font-weight: 600;">
+                {% if event.payment_type == 'pay_in_full' %}
+                  Pay in Full
+                {% elif event.payment_type == 'pay_deposit' %}
+                  Pay Deposit
+                {% elif event.payment_type == 'split_payment' %}
+                  Split Payment
+                {% else %}
+                  {{event.payment_type|default:"Full Payment"|title}}
+                {% endif %}
+              </span>
+            </p>
+            {% if event.deposit_amount %}
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Deposit Amount:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.deposit_amount}}</span>
+            </p>
+            {% endif %}
+            {% if event.remaining_amount %}
+            <p style="margin: 0;">
+              <strong style="color: #333;">Remaining Balance:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.remaining_amount}}</span>
+            </p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Preparation Tips -->
+        <div style="background-color: #fff3cd; padding: 20px; border-radius: 6px; margin-bottom: 25px; border-left: 4px solid #ffc107;">
+          <h3 style="color: #856404; margin-top: 0; font-size: 16px; margin-bottom: 15px;">
+            📋 Preparation Tips
+          </h3>
+          <ul style="color: #856404; font-size: 14px; line-height: 1.6; margin: 0; padding-left: 20px;">
+            <li>
+              Ensure your vehicle is parked in an accessible location
+            </li>
+            <li>
+              Remove any items from your dashboard and windscreen area
+            </li>
+            <li>
+              Clear the driveway/parking area for our technician's van
+            </li>
+            <li>
+              Have your vehicle keys ready for the technician
+            </li>
+            <li>
+              The service typically takes 60-90 minutes to complete
+            </li>
+          </ul>
+        </div>
+
+        <!-- What to Expect -->
+        <div style="background-color: #e8f8f9; padding: 20px; border-radius: 6px; margin-bottom: 25px; border-left: 4px solid #0FB8C1;">
+          <h3 style="color: #0FB8C1; margin-top: 0; font-size: 16px; margin-bottom: 10px;">
+            What to Expect
+          </h3>
+          <ul style="color: #333; font-size: 14px; line-height: 1.6; margin: 0; padding-left: 20px;">
+            <li>
+              Our technician will arrive within the scheduled time window
+            </li>
+            <li>
+              They'll assess the damage and confirm the work required
+            </li>
+            <li>
+              Professional installation using quality materials
+            </li>
+            <li>
+              Clean-up of the work area after completion
+            </li>
+            <li>
+              Final inspection and care instructions
+            </li>
+          </ul>
+        </div>
+
+        <!-- Contact Information -->
+        <div style="text-align: center; margin-top: 25px;">
+          <p style="color: #666; font-size: 14px; margin: 0 0 10px 0;">
+            Need to reschedule? Contact us at
+            <a href="mailto:hello@windscreencompare.com" style="color: #0FB8C1; text-decoration: none;">hello@windscreencompare.com</a>
+          </p>
+          <p style="color: #666; font-size: 14px; margin: 0;">
+            Questions? Email us at
+            <a href="mailto:hello@windscreencompare.com" style="color: #0FB8C1; text-decoration: none;">hello@windscreencompare.com</a>
+          </p>
+        </div>
+
+        <!-- Footer Info -->
+        <div style="text-align: center; margin-top: 25px; padding-top: 20px; border-top: 1px solid #eee;">
+          <p style="color: #666; font-size: 14px; margin: 0 0 15px 0;">
+            Booking Reference: {{event.booking_reference|default:event.quote_id}} | {{event.formatted_timestamp}}
+          </p>
+          <p style="color: #999; font-size: 12px; margin: 0;">
+            {% unsubscribe %}
+          </p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html> 

@@ -1,0 +1,166 @@
+<html>
+  <body>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f9f9f9; padding: 20px;">
+      <!-- Header -->
+      <div style="background-color: white; color: #333; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; border-bottom: 2px solid #0FB8C1;">
+        <img alt="WindscreenCompare Logo" src="https://d3k81ch9hvuctc.cloudfront.net/company/XjdccL/images/5ca10ab9-79c7-4755-af6e-07ffff417b0a.png" style="max-width: 200px; height: auto; margin-bottom: 10px;"/>
+        <h1 style="margin: 0; font-size: 24px; color: #0FB8C1;">
+          WindscreenCompare
+        </h1>
+        <p style="margin: 5px 0 0 0; font-size: 16px; color: #666;">
+          Payment Receipt - Thank you for your payment!
+        </p>
+      </div>
+
+      <!-- Content -->
+      <div style="background-color: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <!-- Payment Confirmation Message -->
+        <h2 style="color: #0FB8C1; margin-top: 0; font-size: 20px; margin-bottom: 20px;">
+          Payment Confirmed!
+        </h2>
+        <p style="color: #333; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+          Thank you {{event.customer_name}}! Your payment has been successfully processed. Here are your payment details and service information.
+        </p>
+
+        <!-- Payment Details -->
+        <div style="background-color: #e8f8f9; padding: 20px; border-radius: 6px; margin-bottom: 25px; border: 2px solid #0FB8C1;">
+          <h3 style="color: #0FB8C1; margin-top: 0; font-size: 18px; margin-bottom: 15px;">
+            💳 Payment Details
+          </h3>
+          <div style="font-size: 16px; line-height: 1.8;">
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Payment ID:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.payment_intent_id}}</span>
+            </p>
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Amount Paid:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.amount_paid}}</span>
+            </p>
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Payment Method:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.payment_method|default:"Card"|title}}</span>
+            </p>
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Payment Type:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.payment_type|default:"Full Payment"|title}}</span>
+            </p>
+            <p style="margin: 0;">
+              <strong style="color: #333;">Payment Date:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.formatted_payment_date}}</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- Service Summary -->
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 25px;">
+          <h3 style="color: #0FB8C1; margin-top: 0; font-size: 18px; margin-bottom: 15px;">
+            🚗 Service Summary
+          </h3>
+          <div style="font-size: 16px; line-height: 1.8;">
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Vehicle:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.vehicle_registration}} ({{event.vehicle_make}} {{event.vehicle_model}})</span>
+            </p>
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Glass Type:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.glass_type}}</span>
+            </p>
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Service:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.selected_windows}}</span>
+            </p>
+            <p style="margin: 0;">
+              <strong style="color: #333;">Booking Reference:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.booking_reference}}</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- Price Breakdown -->
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 25px;">
+          <h3 style="color: #0FB8C1; margin-top: 0; font-size: 18px; margin-bottom: 15px;">
+            💰 Price Breakdown
+          </h3>
+          <div style="font-size: 14px; line-height: 1.6;">
+            {% if event.materials_cost %}
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+              <span style="color: #333;">Materials:</span>
+              <span style="color: #333; font-weight: 600;">{{event.materials_cost}}</span>
+            </div>
+            {% endif %}
+            {% if event.labor_cost %}
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+              <span style="color: #333;">Labor:</span>
+              <span style="color: #333; font-weight: 600;">{{event.labor_cost}}</span>
+            </div>
+            {% endif %}
+            {% if event.vat_amount %}
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+              <span style="color: #333;">VAT:</span>
+              <span style="color: #333; font-weight: 600;">{{event.vat_amount}}</span>
+            </div>
+            {% endif %}
+            {% if event.discount_amount %}
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+              <span style="color: #333;">Discount:</span>
+              <span style="color: #333; font-weight: 600;">-{{event.discount_amount}}</span>
+            </div>
+            {% endif %}
+            <hr style="border: none; border-top: 1px solid #dee2e6; margin: 15px 0;"/>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: #0FB8C1; font-weight: bold; font-size: 16px;">Amount Paid:</span>
+              <span style="color: #0FB8C1; font-weight: bold; font-size: 16px;">{{event.amount_paid}}</span>
+            </div>
+            {% if event.remaining_amount %}
+            <div style="display: flex; justify-content: space-between; margin-top: 8px;">
+              <span style="color: #333; font-weight: bold;">Remaining Balance:</span>
+              <span style="color: #333; font-weight: bold;">{{event.remaining_amount}}</span>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Service Information -->
+        <div style="background-color: #e8f8f9; padding: 20px; border-radius: 6px; margin-bottom: 25px; border-left: 4px solid #0FB8C1;">
+          <h3 style="color: #0FB8C1; margin-top: 0; font-size: 16px; margin-bottom: 10px;">
+            📋 What Happens Next
+          </h3>
+          <ul style="color: #333; font-size: 14px; line-height: 1.6; margin: 0; padding-left: 20px;">
+            <li>You will receive a separate appointment confirmation email shortly</li>
+            <li>Our team will contact you to confirm your service date and time</li>
+            <li>A technician will be assigned and contact you 1 hour before arrival</li>
+            <li>Please keep this receipt for your records</li>
+          </ul>
+        </div>
+
+        <!-- Important Notes -->
+        <div style="background-color: #fff3cd; padding: 20px; border-radius: 6px; margin-bottom: 25px; border-left: 4px solid #ffc107;">
+          <h3 style="color: #856404; margin-top: 0; font-size: 16px; margin-bottom: 15px;">
+            ⚠️ Important Notes
+          </h3>
+          <ul style="color: #856404; font-size: 14px; line-height: 1.6; margin: 0; padding-left: 20px;">
+            <li>This is your official payment receipt - please save for your records</li>
+            <li>If you need to make changes to your appointment, contact us immediately</li>
+            {% if event.remaining_amount %}
+            <li><strong>Outstanding Balance:</strong> {{event.remaining_amount}} due before or on service day</li>
+            {% endif %}
+            <li>Service comes with a 12-month guarantee on workmanship</li>
+          </ul>
+        </div>
+
+        <!-- Contact Information -->
+        <div style="text-align: center; margin-top: 25px;">
+          <p style="color: #666; font-size: 14px; margin: 0 0 10px 0;">
+            Questions about your payment? Contact us at
+            <a href="mailto:hello@windscreencompare.com" style="color: #0FB8C1; text-decoration: none;">hello@windscreencompare.com</a>
+          </p>
+          <p style="color: #666; font-size: 14px; margin: 0;">
+            Need support? Call us at
+            <a href="tel:+442038828574" style="color: #0FB8C1; text-decoration: none;">+44 20 3882 8574</a>
+          </p>
+        </div>
+
+        <!-- Footer Info -->
+        <div style="text-align: center; margin-top: 25px; padding-top: 20px; border-top: 1px solid #eee;">
+          <p style="color: #666; font-size: 14px; margin: 0 0 15px 0;">
+            Booking Reference: {{event.booking_reference}} | Payment ID: {{event.payment_intent_id}}
+          </p>
+          <p style="color: #999; font-size: 12px; margin: 0;">
+            {% unsubscribe %}
+          </p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html> 

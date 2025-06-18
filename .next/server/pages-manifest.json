@@ -3,7 +3,13 @@
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
   "/damage-location": "pages/damage-location.js",
-  "/contact-info": "pages/contact-info.js",
   "/quote": "pages/quote.js",
-  "/": "pages/index.js"
+  "/contact-info": "pages/contact-info.js",
+  "/api/update-quote-settings": "pages/api/update-quote-settings.js",
+  "/api/create-payment-intent": "pages/api/create-payment-intent.js",
+  "/payment-success": "pages/payment-success.js",
+  "/api/check-quote-exists": "pages/api/check-quote-exists.js",
+  "/api/verify-payment": "pages/api/verify-payment.js",
+  "/api/get-quote-data": "pages/api/get-quote-data.js",
+  "/api/send-payment-confirmation": "pages/api/send-payment-confirmation.js"
 }

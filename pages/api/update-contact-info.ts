@@ -1,9 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import Airtable from 'airtable';
-
-const base = new Airtable({ 
-  apiKey: process.env.AIRTABLE_API_KEY || process.env.NEXT_PUBLIC_AIRTABLE_API_KEY 
-}).base(process.env.AIRTABLE_BASE_ID || process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID!);
+import { supabase } from '../../lib/supabaseClient';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'PUT') {
@@ -17,37 +13,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ message: 'Quote ID is required' });
     }
 
-    const records = await base('Submissions').select({
-      filterByFormula: `{QuoteID} = '${quoteId}'`
-    }).firstPage();
+    const { data, error } = await supabase
+      .from('MasterCustomer')
+      .update({
+        full_name: contactDetails.fullName,
+        email: contactDetails.email,
+        mobile: contactDetails.mobile,
+        postcode: contactDetails.postcode,
+        location: contactDetails.location,
+        appointment_date: contactDetails.date,
+        time_slot: contactDetails.timeSlot
+      })
+      .eq('quote_id', quoteId)
+      .select()
+      .single();
 
-    if (records.length === 0) {
-      return res.status(404).json({ message: 'Record not found' });
+    if (error) {
+      throw error;
     }
 
-    const updatedRecords = await base('Submissions').update([{
-      id: records[0].id,
-      fields: {
-        'Full Name': contactDetails.fullName,
-        'Email': contactDetails.email,
-        'Mobile': contactDetails.mobile,
-        'PostcodeAccident': contactDetails.postcode,
-        'Location': contactDetails.location,
-        'Appointment Date': contactDetails.date,
-        'Time Slot': contactDetails.timeSlot
-      }
-    }]);
+    if (!data) {
+      return res.status(404).json({ message: 'Record not found' });
+    }
 
     return res.status(200).json({ 
       success: true, 
       message: 'Contact details updated successfully',
-      record: updatedRecords[0] 
+      record: data 
     });
   } catch (error) {
     console.error('Error updating details:', error);
     return res.status(500).json({ 
       message: 'Failed to update details',
-      error 
+      error: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 } 

@@ -14,7 +14,7 @@ export default async function handler(
   }
 
   try {
-    const { amount, vehicleReg, selectedWindows, specifications } = req.body;
+    const { amount, vehicleReg, selectedWindows, specifications, glassType, selectedCompany, adasCalibration } = req.body;
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],

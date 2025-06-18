@@ -24,7 +24,7 @@ const windowNameMapping: { [key: string]: string } = {
   'jqvmap1_qg': 'Rear Driver Quarter'
 };
 
-const CheckoutForm = ({ amount, paymentType }: { amount: number, paymentType: 'full' | 'deposit' | 'split' }) => {
+const CheckoutForm = ({ amount, paymentType, isDisabled = false, customerEmail, quoteId, totalPrice }: { amount: number, paymentType: 'full' | 'deposit' | 'split', isDisabled?: boolean, customerEmail?: string, quoteId?: string, totalPrice?: number }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +46,13 @@ const CheckoutForm = ({ amount, paymentType }: { amount: number, paymentType: 'f
     const response = await fetch('/api/create-payment-intent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount }),
+      body: JSON.stringify({ 
+        amount,
+        paymentType,
+        totalAmount: totalPrice || amount,
+        quoteId: quoteId || window.location.pathname.split('/').pop() || 'unknown',
+        customerEmail: customerEmail
+      }),
     });
 
     const { clientSecret } = await response.json();
@@ -55,7 +61,7 @@ const CheckoutForm = ({ amount, paymentType }: { amount: number, paymentType: 'f
       elements,
       clientSecret,
       confirmParams: {
-        return_url: `${window.location.origin}/payment-success`,
+        return_url: typeof window !== 'undefined' ? `${window.location.origin}/payment-success` : '/payment-success',
       },
     });
 
@@ -71,10 +77,10 @@ const CheckoutForm = ({ amount, paymentType }: { amount: number, paymentType: 'f
       {error && <div className="text-red-500 text-sm">{error}</div>}
       <button
         type="submit"
-        disabled={!stripe || processing}
+        disabled={!stripe || processing || isDisabled}
         className="w-full py-4 bg-[#0FB8C1] text-white rounded-xl text-lg font-semibold hover:bg-[#0DA6AE] transition duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50"
       >
-        {processing ? 'Processing...' : `Pay ${paymentType === 'full' ? 'in Full' : paymentType === 'deposit' ? 'Deposit' : 'Split Payment'} Now`}
+        {processing ? 'Processing...' : isDisabled ? 'Select Glass Type First' : `Pay ${paymentType === 'full' ? 'in Full' : paymentType === 'deposit' ? 'Deposit' : 'Split Payment'} Now`}
       </button>
     </form>
   );
@@ -92,18 +98,30 @@ interface ContactDetails {
 
 const QuotePage: React.FC = () => {
   const router = useRouter();
-  const { vehicleReg, selectedWindows, windowDamage, specifications, paymentOption, insuranceDetails, contactDetails, quoteID, glassType } = router.query;
+  const { vehicleReg, selectedWindows, windowDamage, specifications, paymentOption, insuranceDetails, contactDetails, quoteID, glassType: queryGlassType } = router.query;
 
-  const parsedData = {
+  // State for storing fetched quote data (for magic link functionality)
+  const [fetchedQuoteData, setFetchedQuoteData] = useState<any>(null);
+  const [isLoadingQuoteData, setIsLoadingQuoteData] = useState(false);
+
+  // Determine if this is a magic link (only quoteID provided)
+  const isMagicLink = quoteID && !vehicleReg && !selectedWindows;
+
+  const parsedData = fetchedQuoteData || {
     vehicleReg: vehicleReg as string,
     quoteID: quoteID as string,
-    selectedWindows: JSON.parse(selectedWindows as string || '[]'),
-    windowDamage: JSON.parse(windowDamage as string || '{}'),
-    specifications: JSON.parse(specifications as string || '[]'),
+    selectedWindows: selectedWindows ? JSON.parse(selectedWindows as string || '[]') : [],
+    windowDamage: windowDamage ? JSON.parse(windowDamage as string || '{}') : {},
+    specifications: specifications ? JSON.parse(specifications as string || '[]') : [],
     paymentOption: paymentOption as 'self' | 'insurance',
     insuranceDetails: insuranceDetails ? JSON.parse(insuranceDetails as string) : null,
     contactDetails: contactDetails ? JSON.parse(contactDetails as string) : null,
-    glassType: glassType as string
+    queryGlassType: queryGlassType as string,
+    vehicleDetails: null,
+    comments: '',
+    chipSize: null,
+    glassColor: {},
+    uploadedImages: []
   };
 
   const [isEditingContact, setIsEditingContact] = useState(false);
@@ -116,6 +134,8 @@ const QuotePage: React.FC = () => {
   });
 
   const [quotePrice, setQuotePrice] = useState<number | null>(null);
+  const [baseQuoteData, setBaseQuoteData] = useState<any>(null); // Store base calculation data
+  const [quoteBreakdown, setQuoteBreakdown] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [quoteRange] = useState({
@@ -124,8 +144,11 @@ const QuotePage: React.FC = () => {
     average: 550
   });
   const [deliveryType, setDeliveryType] = useState<'standard' | 'express'>('standard');
-  const [timeLeft, setTimeLeft] = useState(30 * 60); // 30 minutes in seconds
-  const [recordId, setRecordId] = useState<string | null>(null);
+  const [paymentType, setPaymentType] = useState<'full' | 'deposit' | 'split'>('full');
+  const [isExpired, setIsExpired] = useState(false);
+  const [countdown, setCountdown] = useState(15 * 60); // 15 minutes in seconds
+  const [isEditingAppointment, setIsEditingAppointment] = useState(false);
+  const [isQuoteDetailsCollapsed, setIsQuoteDetailsCollapsed] = useState(true);
 
   const [displayedContactDetails, setDisplayedContactDetails] = useState<ContactDetails>(
     parsedData.contactDetails || {
@@ -137,67 +160,237 @@ const QuotePage: React.FC = () => {
     }
   );
 
-  const [isEditingAppointment, setIsEditingAppointment] = useState(false);
   const [editedAppointmentData, setEditedAppointmentData] = useState({
     date: parsedData.contactDetails?.date || '',
     timeSlot: parsedData.contactDetails?.timeSlot || ''
   });
 
-  const [isExpired, setIsExpired] = useState(false);
-  const [paymentType, setPaymentType] = useState<'full' | 'deposit' | 'split'>('full');
-  const [isPriceBreakdownOpen, setIsPriceBreakdownOpen] = useState(false);
+  const [recordId, setRecordId] = useState<string | null>(null);
+
   const [selectedBusiness, setSelectedBusiness] = useState<string>('');
+  const [glassType, setGlassType] = useState<'OEM' | 'OEE' | null>(
+    (router.query.glassType as 'OEM' | 'OEE') || 
+    (parsedData.queryGlassType as 'OEM' | 'OEE') || 
+    null
+  );
+  
+  const [adasCalibration, setAdasCalibration] = useState<'yes' | 'no' | null>(null);
+  
+  // Add mounted state to prevent hydration mismatch
+  const [isMounted, setIsMounted] = useState(false);
 
-  // Add a mapping for each business's price
-  const businessPrices: { [key: string]: number } = {
-    "Auto Bond Co": 695,
-    "Windscreen Wizard": 795,
-    "Glass Express": 845,
-  };
+  // Handle hydration
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
-  // Create a function that updates the selected business and the main quotePrice
+  // Update glass type when router query changes (for navigation back)
+  useEffect(() => {
+    const urlGlassType = router.query.glassType as 'OEM' | 'OEE' | undefined;
+    if (urlGlassType && urlGlassType !== glassType) {
+      setGlassType(urlGlassType);
+    }
+  }, [router.query.glassType]);
+
+  // Remove hardcoded business prices - we'll use the actual API-calculated price
+  const [apiQuotePrice, setApiQuotePrice] = useState<number | null>(null);
+  
+  // Company pricing with random variations
+  const [companyPrices, setCompanyPrices] = useState<{name: string, price: number, rating: number, delivery: string}[]>([]);
+
+  // Create a function that updates the selected business
   const handleBusinessChange = (business: string) => {
     setSelectedBusiness(business);
-    setQuotePrice(businessPrices[business]);
+    // Don't override the price here - use the API calculated price
   };
 
-  useEffect(() => {
-    // Clear stored form data when reaching the quote page
-    localStorage.removeItem('windscreenCompareData');
-    localStorage.removeItem('damageLocationData');
+  // Add a new handleGlassTypeChange function
+  const handleGlassTypeChange = (type: 'OEM' | 'OEE' | null) => {
+    setGlassType(type);
     
-    if (parsedData.vehicleReg) {
-      calculateQuoteWithType(deliveryType);
+    // Update URL with glass type to persist across page navigation
+    const currentQuery = { ...router.query };
+    if (type) {
+      currentQuery.glassType = type;
+    } else {
+      delete currentQuery.glassType;
     }
-  }, [parsedData.vehicleReg]);
-
-  useEffect(() => {
-    if (!isLoading && quotePrice) {
-      const timer = setInterval(() => {
-        setTimeLeft((prevTime) => {
-          if (prevTime <= 0) {
-            clearInterval(timer);
-            setIsExpired(true);
-            return 0;
-          }
-          return prevTime - 1;
-        });
-      }, 1000);
-
-      return () => clearInterval(timer);
+    
+    router.replace({
+      pathname: router.pathname,
+      query: currentQuery
+    }, undefined, { shallow: true });
+    
+    // Calculate price locally instead of calling API
+    if (baseQuoteData && type) {
+      calculatePriceLocally(type);
     }
-  }, [isLoading, quotePrice]);
-
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    
+    // Update quote settings in database
+    updateQuoteSettings(type, adasCalibration);
   };
 
-  const calculateQuoteWithType = async (type: 'standard' | 'express') => {
+  const updateQuoteSettings = async (glassType: 'OEM' | 'OEE' | null, adasCalibration: 'yes' | 'no' | null) => {
+    try {
+      const dataToUse = fetchedQuoteData || parsedData;
+      const quoteID = router.query.quoteID || dataToUse.quoteID;
+      
+      if (quoteID) {
+        await fetch('/api/update-quote-settings', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            quoteId: quoteID,
+            glassType: glassType,
+            adasCalibration: adasCalibration
+          }),
+        });
+      }
+    } catch (error) {
+      console.error('Error updating quote settings:', error);
+      // Continue execution even if update fails
+    }
+  };
+
+  // Generate deterministic price variations for companies
+  const generateCompanyPrices = (basePrice: number) => {
+    const companies = [
+      { name: 'Auto Bond Co', rating: 5, delivery: '1 Day Delivery' },
+      { name: 'Windscreen Wizard', rating: 5, delivery: '1 Day Delivery' },
+      { name: 'Glass Express', rating: 4, delivery: '2 Day Delivery' }
+    ];
+
+    // Create a deterministic seed based on the base price and vehicle data
+    const dataToUse = fetchedQuoteData || parsedData;
+    const seedString = `${basePrice}-${dataToUse.vehicleReg || ''}-${JSON.stringify(dataToUse.selectedWindows || [])}`;
+    
+    // Simple deterministic random number generator
+    const seededRandom = (seed: string, index: number) => {
+      let hash = 0;
+      const fullSeed = seed + index;
+      for (let i = 0; i < fullSeed.length; i++) {
+        const char = fullSeed.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32-bit integer
+      }
+      return Math.abs(hash) / 2147483647; // Normalize to 0-1
+    };
+
+    const companiesWithPrices = companies.map((company, index) => {
+      // Generate deterministic variation between -2% and +2%
+      const randomValue = seededRandom(seedString, index);
+      const variation = (randomValue - 0.5) * 0.04; // -0.02 to +0.02
+      const adjustedPrice = Math.round(basePrice * (1 + variation));
+      
+      return {
+        ...company,
+        price: adjustedPrice
+      };
+    });
+
+    // Sort by price (cheapest first)
+    companiesWithPrices.sort((a, b) => a.price - b.price);
+    
+    setCompanyPrices(companiesWithPrices);
+    
+    // Auto-select the cheapest option
+    if (companiesWithPrices.length > 0) {
+      setSelectedBusiness(companiesWithPrices[0].name);
+    }
+  };
+
+  // Local price calculation based on glass type
+  const calculatePriceLocally = (selectedGlassType: 'OEM' | 'OEE') => {
+    if (!baseQuoteData) return;
+
+    const { labourCost, baseMaterialsCost, specificationsCost } = baseQuoteData;
+    
+    // Apply glass type multiplier to materials
+    const glassMultiplier = selectedGlassType === 'OEM' ? 1.4 : 1.0;
+    const materialsCost = (baseMaterialsCost + specificationsCost) * glassMultiplier;
+    
+    // Calculate subtotal (labour + materials)
+    const subtotal = labourCost + materialsCost;
+    
+    // Add 20% service fee on labour + materials
+    const serviceFee = subtotal * 0.2;
+    const totalBeforeVAT = subtotal + serviceFee;
+    
+    // Add 20% VAT on the total
+    const vat = totalBeforeVAT * 0.2;
+    let totalPrice = totalBeforeVAT + vat;
+    
+    // Apply delivery type fee
+    if (deliveryType === 'express') {
+      totalPrice += 90; // £90 additional for express delivery
+    }
+    
+    // Round to nearest pound
+    totalPrice = Math.round(totalPrice);
+    
+    // Update state with calculated values
+    setQuotePrice(totalPrice);
+    setQuoteBreakdown({
+      labourCost: labourCost,
+      materialsCost: Math.round(materialsCost * 100) / 100,
+      subtotal: Math.round(subtotal * 100) / 100,
+      serviceFee: Math.round(serviceFee * 100) / 100,
+      totalBeforeVAT: Math.round(totalBeforeVAT * 100) / 100,
+      vat: Math.round(vat * 100) / 100,
+      finalPrice: totalPrice,
+      glassType: selectedGlassType,
+      deliveryType: deliveryType
+    });
+    
+    // Generate company prices with random variations
+    generateCompanyPrices(totalPrice);
+  };
+
+  const calculateQuoteWithGlassType = async (type: 'standard' | 'express', glassTypeOverride?: 'OEM' | 'OEE' | null) => {
     try {
       setIsLoading(true);
+      setError(null); // Clear any previous errors
       setQuotePrice(null);
+      
+      // Use OEE as default for initial API call to get base data
+      const apiGlassType = glassTypeOverride !== undefined ? glassTypeOverride : (glassType || 'OEE');
+      
+      // Use fetched data if available (for magic links), otherwise use parsed data
+      const dataToUse = fetchedQuoteData || parsedData;
+      
+      console.log('calculateQuoteWithGlassType - Data being used:', {
+        fetchedQuoteData: fetchedQuoteData ? 'available' : 'null',
+        parsedData: parsedData ? 'available' : 'null',
+        dataToUse,
+        vehicleReg: dataToUse.vehicleReg,
+        selectedWindows: dataToUse.selectedWindows,
+        windowDamage: dataToUse.windowDamage
+      });
+      
+      if (!dataToUse.vehicleReg) {
+        console.error('No vehicle registration available! Data:', dataToUse);
+        throw new Error('Vehicle registration not found. Please restart the quote process.');
+      }
+
+      // Check if we have selected windows and damage data
+      console.log('Checking selected windows:', dataToUse.selectedWindows);
+      console.log('Checking window damage:', dataToUse.windowDamage);
+      
+      if (!dataToUse.selectedWindows || (Array.isArray(dataToUse.selectedWindows) && dataToUse.selectedWindows.length === 0)) {
+        console.error('No selected windows data available! Data:', dataToUse);
+        setError('No window selection found. Please start over from damage location page.');
+        setIsLoading(false);
+        return;
+      }
+
+      if (!dataToUse.windowDamage || Object.keys(dataToUse.windowDamage).length === 0) {
+        console.error('No window damage data available! Data:', dataToUse);
+        setError('No damage information found. Please start over from damage location page.');
+        setIsLoading(false);
+        return;
+      }
       
       const response = await fetch('/api/calculate-quote', {
         method: 'POST',
@@ -206,13 +399,19 @@ const QuotePage: React.FC = () => {
         },
         body: JSON.stringify({
           vehicleDetails: {
-            registration: parsedData.vehicleReg,
+            registration: dataToUse.vehicleReg,
           },
-          windowSpecifications: Array.isArray(parsedData.specifications) 
-            ? parsedData.specifications 
+          windowSpecifications: Array.isArray(dataToUse.specifications) 
+            ? dataToUse.specifications 
             : [],
+          selectedWindows: Array.isArray(dataToUse.selectedWindows)
+            ? dataToUse.selectedWindows
+            : [],
+          windowDamage: dataToUse.windowDamage || {},
+          glassColor: dataToUse.glassColor || {},
           deliveryType: type,
-          quoteId: router.query.quoteID
+          quoteId: router.query.quoteID || dataToUse.quoteID,
+          glassType: apiGlassType
         }),
       });
 
@@ -224,7 +423,23 @@ const QuotePage: React.FC = () => {
       }
 
       const data = JSON.parse(responseText);
+      console.log('Quote calculation breakdown:', data.breakdown);
+      
+      // Store base calculation data for local price calculations
+      setBaseQuoteData({
+        labourCost: data.breakdown.labourCost,
+        baseMaterialsCost: data.breakdown.materialsCost / (apiGlassType === 'OEM' ? 1.4 : 1.0), // Remove glass type multiplier to get base
+        specificationsCost: data.breakdown.specificationCosts || 0,
+        vehicleBasedPrice: data.breakdown.vehicleBasedPrice,
+        otrPrice: data.breakdown.otrPrice
+      });
+      
       setQuotePrice(data.price);
+      setApiQuotePrice(data.price);
+      setQuoteBreakdown(data.breakdown);
+      
+      // Generate company prices with random variations
+      generateCompanyPrices(data.price);
     } catch (err) {
       console.error('Quote error:', err);
       setError(err instanceof Error ? err.message : 'Failed to calculate quote');
@@ -233,8 +448,200 @@ const QuotePage: React.FC = () => {
     }
   };
 
+  const calculateQuoteWithType = async (type: 'standard' | 'express') => {
+    return calculateQuoteWithGlassType(type);
+  };
+
+  // Function to fetch quote data for magic links
+  const fetchQuoteData = async (quoteId: string) => {
+    try {
+      setIsLoadingQuoteData(true);
+      console.log('Fetching quote data from API for:', quoteId);
+      
+      const response = await fetch(`/api/get-quote-data?quoteId=${quoteId}`);
+      console.log('API response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API error response:', errorText);
+        throw new Error(`Failed to fetch quote data: ${errorText}`);
+      }
+      
+      const result = await response.json();
+      console.log('API response data:', result);
+      
+      if (result.success && result.data) {
+        console.log('Setting fetchedQuoteData with:', result.data);
+        console.log('Selected windows in fetched data:', result.data.selectedWindows);
+        console.log('Window damage in fetched data:', result.data.windowDamage);
+        console.log('Glass type in fetched data:', result.data.glassType);
+        setFetchedQuoteData(result.data);
+        
+        // Set glass type if available
+        if (result.data.glassType) {
+          setGlassType(result.data.glassType);
+        } else if (result.data.argicCode) {
+          // Try to extract glass type from argic code or set default
+          setGlassType('OEE'); // Default, could be enhanced to parse from argic code
+        }
+        
+        return result.data;
+      } else {
+        console.error('API returned unsuccessful result:', result);
+        throw new Error('Quote data not found in response');
+      }
+    } catch (error) {
+      console.error('Error fetching quote data:', error);
+      // For magic links, don't show error immediately - the user might be in the middle of the flow
+      // setError('Failed to load quote data. Please check your link or start a new quote.');
+      return null;
+    } finally {
+      setIsLoadingQuoteData(false);
+    }
+  };
+
+  useEffect(() => {
+    // Clear stored form data when reaching the quote page
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('windscreenCompareData');
+      localStorage.removeItem('damageLocationData');
+    }
+    
+    const initializeQuote = async () => {
+      if (isMagicLink && quoteID) {
+        // Magic link: fetch data from Supabase
+        console.log('Magic link detected, fetching data for quoteID:', quoteID);
+        const fetchedData = await fetchQuoteData(quoteID as string);
+        console.log('Fetched data result:', fetchedData);
+        
+        // Don't calculate quote here - let the useEffect handle it after state is set
+        if (fetchedData && fetchedData.vehicleReg) {
+          console.log('Vehicle reg found in fetched data:', fetchedData.vehicleReg);
+          
+          // Check if this is a complete quote or just partial data
+          if (!fetchedData.selectedWindows || !fetchedData.windowDamage) {
+            console.warn('Incomplete quote data - missing windows/damage info');
+            setError('This quote is incomplete. Please start over from the beginning.');
+            setIsLoading(false);
+            return;
+          }
+          
+          // Quote calculation will be triggered by the useEffect when fetchedQuoteData is set
+        } else {
+          console.warn('No vehicle reg found in fetched data or data is null');
+          setError('No vehicle data found for this quote. Please start over.');
+          setIsLoading(false);
+        }
+      } else {
+        // Regular flow: use URL parameters
+        console.log('Regular flow detected');
+    // Initialize glassType from query parameter if available
+    if (parsedData.queryGlassType === 'OEM' || parsedData.queryGlassType === 'OEE') {
+      setGlassType(parsedData.queryGlassType);
+    }
+    
+    // Only call API once on initial load
+    if (parsedData.vehicleReg) {
+      calculateQuoteWithType(deliveryType);
+    } else {
+      // If no vehicle reg, stop loading
+      console.warn('No vehicle registration found, stopping loading state');
+      setIsLoading(false);
+      setError('Vehicle registration not found. Please start over.');
+    }
+      }
+    };
+
+    initializeQuote();
+  }, [quoteID, vehicleReg, selectedWindows, isMagicLink]);
+
+  // Trigger local calculation when glass type changes (after initial load)
+  useEffect(() => {
+    if (baseQuoteData && glassType && !isLoading) {
+      calculatePriceLocally(glassType);
+    }
+  }, [glassType, baseQuoteData, deliveryType]);
+
+  useEffect(() => {
+    if (!isLoading && quotePrice && isMounted) {
+      const timer = setInterval(() => {
+        setCountdown((prevTime) => {
+          if (prevTime <= 0) {
+            clearInterval(timer);
+            setIsExpired(true);
+            return 0;
+          }
+          return prevTime - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+  }, [isLoading, quotePrice, isMounted]);
+
+  useEffect(() => {
+    if (!isLoading && quotePrice && selectedBusiness) {
+      // The quote price is already calculated by the API
+      // No need to apply additional multipliers here
+    }
+  }, [isLoading]);
+
+  // Add another useEffect to initialize when selectedBusiness changes
+  useEffect(() => {
+    if (selectedBusiness && !isLoading) {
+      // The price is already set by the API calculation
+      // No additional calculation needed
+    }
+  }, [selectedBusiness]);
+
+  // Update states when fetchedQuoteData becomes available (for magic links)
+  useEffect(() => {
+    if (fetchedQuoteData) {
+      console.log('fetchedQuoteData useEffect triggered with data:', fetchedQuoteData);
+      
+      // Update contact details
+      if (fetchedQuoteData.contactDetails) {
+        setDisplayedContactDetails(fetchedQuoteData.contactDetails);
+        setEditedContactData({
+          fullName: fetchedQuoteData.contactDetails.fullName || '',
+          email: fetchedQuoteData.contactDetails.email || '',
+          mobile: fetchedQuoteData.contactDetails.mobile || '',
+          postcode: fetchedQuoteData.contactDetails.postcode || '',
+          location: fetchedQuoteData.contactDetails.location || ''
+        });
+        setEditedAppointmentData({
+          date: fetchedQuoteData.contactDetails.date || '',
+          timeSlot: fetchedQuoteData.contactDetails.timeSlot || ''
+        });
+      }
+      
+      // Update glass type and ADAS calibration from fetched data
+      if (fetchedQuoteData.glassType) {
+        setGlassType(fetchedQuoteData.glassType);
+      }
+      if (fetchedQuoteData.adasCalibration) {
+        setAdasCalibration(fetchedQuoteData.adasCalibration);
+      }
+      
+      // Trigger quote calculation for magic links after data is loaded
+      if (isMagicLink && fetchedQuoteData.vehicleReg && !baseQuoteData) {
+        console.log('Triggering quote calculation for magic link with vehicle reg:', fetchedQuoteData.vehicleReg);
+        calculateQuoteWithType(deliveryType);
+      }
+    }
+  }, [fetchedQuoteData, isMagicLink, deliveryType]);
+
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
   const handlePayment = async () => {
     try {
+      // Use fetched data if available (for magic links), otherwise use parsed data
+      const dataToUse = fetchedQuoteData || parsedData;
+      
       // Create a checkout session
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
@@ -242,10 +649,13 @@ const QuotePage: React.FC = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          amount: quotePrice,
-          vehicleReg: parsedData.vehicleReg,
-          selectedWindows: parsedData.selectedWindows,
-          specifications: parsedData.specifications,
+          amount: currentPrice,
+          vehicleReg: dataToUse.vehicleReg,
+          selectedWindows: dataToUse.selectedWindows,
+          specifications: dataToUse.specifications,
+          glassType: glassType, // Add the glass type to the checkout session
+          selectedCompany: selectedBusiness, // Add the selected company
+          adasCalibration: adasCalibration // Add ADAS calibration preference
         }),
       });
 
@@ -269,10 +679,12 @@ const QuotePage: React.FC = () => {
 
   const handleUpdateContact = async () => {
     try {
-      const quoteID = router.query.quoteID || parsedData.quoteID;
+      // Use fetched data if available (for magic links), otherwise use parsed data
+      const dataToUse = fetchedQuoteData || parsedData;
+      const quoteID = router.query.quoteID || dataToUse.quoteID;
       if (!quoteID) {
         console.error('Missing quoteID. Router query:', router.query);
-        console.error('Parsed data:', parsedData);
+        console.error('Data to use:', dataToUse);
         throw new Error('Quote ID is missing');
       }
 
@@ -302,6 +714,7 @@ const QuotePage: React.FC = () => {
 
   const handleDeliveryTypeChange = (type: 'standard' | 'express') => {
     setDeliveryType(type);
+    // Only call API for delivery type changes since it affects final pricing
     calculateQuoteWithType(type);
   };
 
@@ -355,18 +768,76 @@ const QuotePage: React.FC = () => {
     },
   };
 
-  // Derived pricing calculations (recalculate on every render)
-  const basePrice = quotePrice ? (quotePrice * 0.7).toFixed(2) : '0.00';
-  const labour = quotePrice ? (quotePrice * 0.2).toFixed(2) : '0.00';
-  const materials = quotePrice ? (quotePrice * 0.1).toFixed(2) : '0.00';
-  const subtotal = quotePrice ? quotePrice.toFixed(2) : '0.00';
-  const vat = quotePrice ? (quotePrice * 0.2).toFixed(2) : '0.00';
-  const totalIncVat = quotePrice ? (quotePrice * 1.2).toFixed(2) : '0.00';
+  // COMMENTED OUT: Company-specific pricing logic
+  // const getSelectedCompanyPrice = () => {
+  //   if (!selectedBusiness || companyPrices.length === 0) {
+  //     return quotePrice || 0;
+  //   }
+  //   const company = companyPrices.find(c => c.name === selectedBusiness);
+  //   return company ? company.price : quotePrice || 0;
+  // };
+  // const currentCompanyPrice = getSelectedCompanyPrice();
 
-  const fullPaymentPrice = quotePrice ? (quotePrice * 0.95).toFixed(2) : '0.00';
-  const depositPaymentPrice = quotePrice ? (quotePrice * 0.2).toFixed(2) : '0.00';
-  const remainingOnCompletion = quotePrice ? (quotePrice * 0.8).toFixed(2) : '0.00';
-  const splitPaymentPrice = quotePrice ? (quotePrice / 3).toFixed(2) : '0.00';
+  // Simplified pricing using base quote price
+  const currentPrice = quotePrice || 0;
+
+  // Derived pricing calculations from API breakdown (using base price)
+  const labourCost = quoteBreakdown?.labourCost?.toFixed(2) || '140.00';
+  const materialsCost = quoteBreakdown?.materialsCost?.toFixed(2) || '0.00';
+  const subtotal = quoteBreakdown?.subtotal?.toFixed(2) || '0.00';
+  const serviceFee = quoteBreakdown?.serviceFee?.toFixed(2) || '0.00';
+  const totalBeforeVAT = quoteBreakdown?.totalBeforeVAT?.toFixed(2) || '0.00';
+  const vat = quoteBreakdown?.vat?.toFixed(2) || '0.00';
+  const totalIncVat = currentPrice.toFixed(2);
+
+  const fullPaymentPrice = currentPrice ? (currentPrice * 0.95).toFixed(2) : '0.00';
+  const depositPaymentPrice = currentPrice ? (currentPrice * 0.2).toFixed(2) : '0.00';
+  const remainingOnCompletion = currentPrice ? (currentPrice * 0.8).toFixed(2) : '0.00';
+  const splitPaymentPrice = currentPrice ? (currentPrice / 3).toFixed(2) : '0.00';
+
+  // Update the displayPrice function to use individual company prices
+  const displayPrice = (type: 'OEM' | 'OEE' | null, companyName: string) => {
+    // Don't show price if no glass type is selected
+    if (!type) {
+      return <span className="text-gray-500 text-sm">Select glass type</span>;
+    }
+    
+    if (!quotePrice || companyPrices.length === 0) {
+      return <span className="text-gray-500">Calculating...</span>;
+    }
+    
+    // Find the specific company price
+    const company = companyPrices.find(c => c.name === companyName);
+    if (!company) {
+      return <span className="text-gray-500">Price unavailable</span>;
+    }
+    
+    return <span className="text-2xl font-bold text-gray-800">£{company.price.toFixed(2)}</span>;
+  };
+
+  // Add helper methods for displaying different price values with loading states
+  const displayPriceValue = (value: string, loading: boolean = false) => {
+    // Don't show price breakdown values if no glass type is selected
+    if (!glassType) {
+      return <span className="text-gray-400">-</span>;
+    }
+    
+    if (loading || !quoteBreakdown) {
+      return <div className="h-4 w-20 bg-gray-200 animate-pulse rounded"></div>;
+    }
+    return <span>£{value}</span>;
+  };
+
+  // Prevent hydration mismatch by not rendering until mounted
+  if (!isMounted) {
+    return (
+      <div className="flex flex-col min-h-screen bg-gradient-to-b from-white to-gray-50">
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#0FB8C1]" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-white to-gray-50">
@@ -449,10 +920,12 @@ const QuotePage: React.FC = () => {
             {/* Main Quote Section */}
             <div className="md:col-span-2">
               <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
-                {isLoading ? (
+                {(isLoading || isLoadingQuoteData) ? (
                   <div className="flex flex-col items-center justify-center py-12">
                     <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#0FB8C1]" />
-                    <p className="text-gray-600 mt-4">Comparing prices from local technicians...</p>
+                    <p className="text-gray-600 mt-4">
+                      {isLoadingQuoteData ? 'Loading your quote...' : 'Comparing prices from local technicians...'}
+                    </p>
                   </div>
                 ) : error ? (
                   <div className="text-center py-8">
@@ -462,6 +935,12 @@ const QuotePage: React.FC = () => {
                       </svg>
                     </div>
                     <p className="text-red-600 text-lg mb-4">{error}</p>
+                    <button
+                      onClick={handleRestart}
+                      className="px-6 py-3 bg-[#0FB8C1] text-white rounded-full text-sm font-semibold hover:bg-[#0DA6AE] transition duration-300"
+                    >
+                      Start Over
+                    </button>
                   </div>
                 ) : isExpired ? (
                   <div className="text-center py-8">
@@ -483,162 +962,226 @@ const QuotePage: React.FC = () => {
                     <div className="mb-8">
                       <h3 className="text-2xl font-bold text-gray-800 mb-6">Compare Local Technician Quotes</h3>
                       
-                      {quotePrice && !isExpired && (
-                        <div>
-                          {/* Company Comparison Section */}
-                          <div className="flex flex-col gap-3 mb-8">
-                            {/* Auto Bond Co */}
-                            <div className="relative">
-                              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-10">
-                                <span className="bg-[#82D1D5] text-white px-3 py-0.5 rounded-full text-xs font-medium">
-                                  Best Choice
-                                </span>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => handleBusinessChange('Auto Bond Co')}
-                                className={`w-full text-left flex items-center justify-between p-4 rounded-xl transition-all
-                                  ${selectedBusiness === 'Auto Bond Co' 
-                                    ? 'bg-[#F8FDFD] border-2 border-[#82D1D5] shadow-md' 
-                                    : 'bg-white border border-gray-200 hover:border-[#82D1D5] hover:shadow-sm'
-                                  }`}
-                              >
-                                <div className="flex items-center gap-4">
-                                  <div className="w-10 h-10 bg-[#F0F9FA] rounded-lg flex items-center justify-center">
-                                    <svg className="w-5 h-5 text-[#82D1D5]" viewBox="0 0 24 24" fill="currentColor">
-                                      <path d="M11.47 3.84a.75.75 0 011.06 0l8.69 8.69a.75.75 0 101.06-1.06l-8.689-8.69a2.25 2.25 0 00-3.182 0l-8.69 8.69a.75.75 0 001.061 1.06l8.69-8.69z" />
-                                    </svg>
-                                  </div>
-                                  <div>
-                                    <h3 className="text-lg font-semibold text-gray-800">Auto Bond Co</h3>
-                                    <div className="flex items-center gap-4">
-                                      <span className="text-sm text-gray-500">1 Day Delivery</span>
-                                      <div className="flex items-center">
-                                        {[1, 2, 3, 4, 5].map((star) => (
-                                          <svg key={star} className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                          </svg>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <span className="text-2xl font-bold text-gray-800">£{businessPrices["Auto Bond Co"].toFixed(2)}</span>
-                                  <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors
-                                    ${selectedBusiness === 'Auto Bond Co' 
-                                      ? 'bg-[#82D1D5] text-white' 
-                                      : 'bg-gray-200 text-gray-600'
-                                    }`}>
-                                    {selectedBusiness === 'Auto Bond Co' 
-                                      ? <svg /* your active SVG icon */></svg>
-                                      : <svg /* your inactive SVG icon */></svg>}
-                                  </div>
-                                </div>
-                              </button>
+                      {/* Glass Type Selection */}
+                      <div className="bg-gray-50 rounded-xl p-4 mb-6">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-semibold text-gray-700">Glass Type</h4>
+                          <div className="text-sm text-gray-500">Select your preferred glass type</div>
+                        </div>
+                        <div className="flex space-x-4">
+                          <button
+                            onClick={() => handleGlassTypeChange('OEE')}
+                            className={`flex-1 relative py-2 px-4 rounded-lg transition-all ${
+                              glassType === 'OEE'
+                                ? 'bg-[#0FB8C1] text-white shadow-md'
+                                : 'bg-white border border-gray-300 text-gray-700 hover:border-[#0FB8C1]'
+                            }`}
+                          >
+                            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                              <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium">
+                                Recommended
+                              </span>
                             </div>
+                            <div className="font-medium mt-1">OEE Glass</div>
+                            <div className="text-xs mt-1 opacity-80">Original Equipment Equivalent</div>
+                          </button>
+                          <button
+                            onClick={() => handleGlassTypeChange('OEM')}
+                            className={`flex-1 py-2 px-4 rounded-lg transition-all ${
+                              glassType === 'OEM'
+                                ? 'bg-[#0FB8C1] text-white shadow-md'
+                                : 'bg-white border border-gray-300 text-gray-700 hover:border-[#0FB8C1]'
+                            }`}
+                          >
+                            <div className="font-medium">OEM Glass</div>
+                            <div className="text-xs mt-1 opacity-80">Original Equipment Manufacturer</div>
+                          </button>
+                        </div>
+                        <div className="mt-2 text-xs text-gray-500">
+                          {glassType === 'OEE' 
+                            ? 'OEE glass is manufactured to the same standards as OEM glass but by alternative suppliers, offering good value.'
+                            : glassType === 'OEM'
+                              ? 'OEM glass is made by the original manufacturer, identical to what came with your vehicle.'
+                              : 'Please select a glass type to continue. We recommend OEE for the best value.'}
+                        </div>
+                      </div>
 
-                            {/* Windscreen Wizard */}
-                            <button
-                              type="button"
-                              onClick={() => handleBusinessChange('Windscreen Wizard')}
-                              className={`w-full text-left flex items-center justify-between p-4 rounded-xl transition-all
-                                ${selectedBusiness === 'Windscreen Wizard' 
-                                  ? 'bg-[#F8FDFD] border-2 border-[#82D1D5] shadow-md' 
-                                  : 'bg-white border border-gray-200 hover:border-[#82D1D5] hover:shadow-sm'
-                                }`}
-                            >
-                              <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 bg-[#F8FDFD] rounded-lg flex items-center justify-center">
-                                  <svg className="w-5 h-5 text-[#82D1D5]" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M11.47 3.84a.75.75 0 011.06 0l8.69 8.69a.75.75 0 101.06-1.06l-8.689-8.69a2.25 2.25 0 00-3.182 0l-8.69 8.69a.75.75 0 001.061 1.06l8.69-8.69z" />
+                      {/* ADAS Calibration Selection */}
+                      {glassType && (
+                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-6 mb-6 shadow-sm">
+                          <div className="flex items-center justify-center mb-4">
+                            <div className="flex items-center">
+                              <h4 className="text-lg font-semibold text-gray-800">Are you interested in ADAS Calibration?</h4>
+                              <div className="relative group ml-3">
+                                <div className="w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center cursor-help shadow-md border-2 border-blue-200">
+                                  <svg className="w-4 h-4 text-white font-bold" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
                                   </svg>
                                 </div>
-                                <div>
-                                  <h3 className="text-lg font-semibold text-gray-800">Windscreen Wizard</h3>
-                                  <div className="flex items-center gap-4">
-                                    <span className="text-sm text-gray-500">1 Day Delivery</span>
-                                    <div className="flex items-center">
-                                      {[1, 2, 3, 4, 5].map((star) => (
-                                        <svg key={star} className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                        </svg>
-                                      ))}
-                                    </div>
+                                <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs rounded-lg py-3 px-4 w-72 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10 shadow-lg">
+                                  <div className="text-center leading-relaxed">
+                                    Modern vehicles have safety systems (lane assist, automatic braking, etc.) that rely on cameras behind the windscreen. After replacement, these systems need recalibration to work properly and keep you safe.
                                   </div>
+                                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-3">
-                                <span className="text-2xl font-bold text-gray-800">£{businessPrices["Windscreen Wizard"].toFixed(2)}</span>
-                                <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors
-                                  ${selectedBusiness === 'Windscreen Wizard' 
-                                    ? 'bg-[#82D1D5] text-white' 
-                                    : 'bg-gray-200 text-gray-600'
-                                  }`}>
-                                  {selectedBusiness === 'Windscreen Wizard'
-                                    ? <svg /* your active SVG icon */></svg>
-                                    : <svg /* your inactive SVG icon */></svg>}
-                                </div>
+                            </div>
+                          </div>
+                          
+                          <div className="flex space-x-4 max-w-sm mx-auto">
+                            <button
+                              onClick={() => {
+                                setAdasCalibration('yes');
+                                updateQuoteSettings(glassType, 'yes');
+                              }}
+                              className={`flex-1 py-3 px-6 rounded-xl text-sm font-semibold transition-all duration-200 transform hover:scale-105 ${
+                                adasCalibration === 'yes'
+                                  ? 'bg-[#0FB8C1] text-white shadow-lg'
+                                  : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-[#0FB8C1] hover:text-[#0FB8C1] shadow-sm'
+                              }`}
+                            >
+                              <div className="flex items-center justify-center">
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                Yes, I'm interested
                               </div>
                             </button>
-
-                            {/* Glass Express */}
                             <button
-                              type="button"
-                              onClick={() => handleBusinessChange('Glass Express')}
-                              className={`w-full text-left flex items-center justify-between p-4 rounded-xl transition-all
-                                ${selectedBusiness === 'Glass Express' 
-                                  ? 'bg-[#F8FDFD] border-2 border-[#82D1D5] shadow-md' 
-                                  : 'bg-white border border-gray-200 hover:border-[#82D1D5] hover:shadow-sm'
-                                }`}
+                              onClick={() => {
+                                setAdasCalibration('no');
+                                updateQuoteSettings(glassType, 'no');
+                              }}
+                              className={`flex-1 py-3 px-6 rounded-xl text-sm font-semibold transition-all duration-200 transform hover:scale-105 ${
+                                adasCalibration === 'no'
+                                  ? 'bg-gray-600 text-white shadow-lg'
+                                  : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-gray-400 hover:text-gray-800 shadow-sm'
+                              }`}
                             >
-                              <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 bg-[#F8FDFD] rounded-lg flex items-center justify-center">
-                                  <svg className="w-5 h-5 text-[#82D1D5]" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M11.47 3.84a.75.75 0 011.06 0l8.69 8.69a.75.75 0 101.06-1.06l-8.689-8.69a2.25 2.25 0 00-3.182 0l-8.69 8.69a.75.75 0 001.061 1.06l8.69-8.69z" />
-                                  </svg>
-                                </div>
-                                <div>
-                                  <h3 className="text-lg font-semibold text-gray-800">Glass Express</h3>
-                                  <div className="flex items-center gap-4">
-                                    <span className="text-sm text-gray-500">2 Day Delivery</span>
-                                    <div className="flex items-center">
-                                      {[1, 2, 3, 4].map((star) => (
-                                        <svg key={star} className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                        </svg>
-                                      ))}
-                                      <svg className="w-4 h-4 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
-                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                      </svg>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <span className="text-2xl font-bold text-gray-800">£{businessPrices["Glass Express"].toFixed(2)}</span>
-                                <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors
-                                  ${selectedBusiness === 'Glass Express' 
-                                    ? 'bg-[#82D1D5] text-white' 
-                                    : 'bg-gray-200 text-gray-600'
-                                  }`}>
-                                  {selectedBusiness === 'Glass Express'
-                                    ? <svg /* your active SVG icon */></svg>
-                                    : <svg /* your inactive SVG icon */></svg>}
-                                </div>
+                              <div className="flex items-center justify-center">
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                No, not needed
                               </div>
                             </button>
                           </div>
+                        </div>
+                      )}
+
+                      {/* Message to remind users to select glass type */}
+                      {!glassType && (
+                        <div className="mb-6">
+                          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-center">
+                            <p className="text-orange-700 font-medium">Please select a glass type above to continue</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {quotePrice && !isExpired && (
+                        <div>
+                          {/* Quote Display - Compact Design */}
+                          <div className="text-center mb-8">
+                            <div className="bg-white rounded-xl p-6 shadow-md max-w-lg mx-auto">
+                              {/* Title */}
+                              <h2 className="text-2xl font-bold text-gray-800 mb-4">Your Quote is Ready</h2>
+                              
+                              {/* Price */}
+                              <div className="mb-4">
+                                {!glassType ? (
+                                  <div className="h-12 w-36 bg-gray-200 animate-pulse rounded-lg mx-auto"></div>
+                                ) : (
+                                  <div className="text-4xl font-bold text-[#0FB8C1] tracking-tight">
+                                    £{quotePrice.toFixed(2)}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Quote Expiry Timer */}
+                              <div className="flex items-center justify-center mb-6 text-orange-500">
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span className="text-xs">Quote expires in {formatTime(countdown)}</span>
+                              </div>
+
+                              {/* Service Type Selection */}
+                              <div className="flex gap-3 mb-6 justify-center">
+                                <button
+                                  onClick={() => handleDeliveryTypeChange('standard')}
+                                  className={`px-4 py-2 rounded-lg border-2 transition-all text-sm ${
+                                    deliveryType === 'standard'
+                                      ? 'bg-yellow-100 border-yellow-400 text-gray-800 font-semibold'
+                                      : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300'
+                                  }`}
+                                >
+                                  Standard Service
+                                </button>
+                                <button
+                                  onClick={() => handleDeliveryTypeChange('express')}
+                                  className={`px-4 py-2 rounded-lg border-2 transition-all relative text-sm ${
+                                    deliveryType === 'express'
+                                      ? 'bg-gray-100 border-gray-400 text-gray-800 font-semibold'
+                                      : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300'
+                                  }`}
+                                >
+                                  Express (+£90)
+                                  {deliveryType === 'express' && (
+                                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center">
+                                      <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+                                      </svg>
+                                    </div>
+                                  )}
+                                </button>
+                              </div>
+
+                              {deliveryType === 'express' && (
+                                <div className="text-xs text-gray-600 mb-6 bg-gray-50 rounded-md p-2">
+                                  Priority + VIP Service
+                                </div>
+                              )}
+
+                              {/* Price Range Indicator */}
+                              <div className="mb-6">
+                                <div className="flex justify-between text-xs text-gray-600 mb-1">
+                                  <span>Lower Range</span>
+                                  <span>Average</span>
+                                  <span>Higher Range</span>
+                                </div>
+                                <div className="relative">
+                                  <div className="h-2 bg-gradient-to-r from-green-300 via-yellow-300 to-red-300 rounded-full"></div>
+                                  <div 
+                                    className="absolute top-0 w-0.5 h-2 bg-[#0FB8C1] rounded-full"
+                                    style={{ left: '20%' }}
+                                  ></div>
+                                </div>
+                                <div className="flex justify-between text-xs text-gray-600 mt-1">
+                                  <span>£100</span>
+                                  <span>£1000</span>
+                                </div>
+                              </div>
+
+                              {/* Glass Type Info */}
+                              {glassType && (
+                                <div className="text-xs text-gray-600 bg-blue-50 rounded-md p-2">
+                                  {glassType} Glass - Professional Installation
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* COMMENTED OUT: Company Comparison Section - can be restored later if needed */}
 
                           {/* Price Breakdown Box */}
                           <div className="max-w-md mx-auto bg-gray-50 rounded-xl p-6 mb-8">
                             <button
-                              onClick={() => setIsPriceBreakdownOpen(!isPriceBreakdownOpen)}
+                              onClick={() => setIsQuoteDetailsCollapsed(!isQuoteDetailsCollapsed)}
                               className="w-full flex items-center justify-between text-left"
                             >
-                              <span className="font-semibold">Price Breakdown</span>
+                              <span className="font-semibold">{isQuoteDetailsCollapsed ? 'Show Details' : 'Hide Details'}</span>
                               <svg
-                                className={`w-5 h-5 transform transition-transform ${isPriceBreakdownOpen ? 'rotate-180' : ''}`}
+                                className={`w-5 h-5 transform transition-transform ${isQuoteDetailsCollapsed ? 'rotate-180' : ''}`}
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -647,35 +1190,57 @@ const QuotePage: React.FC = () => {
                               </svg>
                             </button>
 
-                            {isPriceBreakdownOpen && (
+                            {!isQuoteDetailsCollapsed && (
                               <div className="mt-4 space-y-2">
                                 <div className="flex justify-between text-sm">
-                                  <span>Base Price</span>
-                                  <span>£{basePrice}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
                                   <span>Labour</span>
-                                  <span>£{labour}</span>
+                                  {displayPriceValue(labourCost)}
                                 </div>
                                 <div className="flex justify-between text-sm">
                                   <span>Materials</span>
-                                  <span>£{materials}</span>
+                                  {displayPriceValue(materialsCost)}
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span>Subtotal</span>
+                                  {displayPriceValue(subtotal)}
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span>Service Fee</span>
+                                  {displayPriceValue(serviceFee)}
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span>Glass Type</span>
+                                  <span>
+                                    {glassType 
+                                      ? `${glassType} ${glassType === 'OEM' ? '(+40%)' : glassType === 'OEE' ? '(Standard)' : ''}` 
+                                      : <span className="italic text-gray-500">Not selected</span>}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span>ADAS Calibration</span>
+                                  <span>
+                                    {adasCalibration 
+                                      ? adasCalibration === 'yes' ? 'Yes' : 'No'
+                                      : <span className="italic text-gray-500">Not selected</span>}
+                                  </span>
                                 </div>
                                 <div className="pt-2 border-t flex justify-between text-sm">
-                                  <span>Subtotal</span>
-                                  <span>£{subtotal}</span>
+                                  <span>Total Before VAT</span>
+                                  {displayPriceValue(totalBeforeVAT)}
                                 </div>
                                 <div className="flex justify-between text-sm">
                                   <span>VAT (20%)</span>
-                                  <span>£{vat}</span>
+                                  {displayPriceValue(vat)}
                                 </div>
                                 <div className="pt-2 border-t flex justify-between font-semibold">
                                   <span>Total (inc. VAT)</span>
-                                  <span>£{totalIncVat}</span>
+                                  {displayPriceValue(totalIncVat)}
                                 </div>
                               </div>
                             )}
                           </div>
+
+
 
                           {/* Payment Options */}
                           <div className="mb-8">
@@ -703,10 +1268,14 @@ const QuotePage: React.FC = () => {
                                   </div>
                                   <div className="text-sm text-gray-500 mb-3">One-time payment</div>
                                   <div className="text-2xl font-bold text-gray-800 mb-1">
-                                    £{fullPaymentPrice}
+                                    {!glassType 
+                                      ? <div className="h-8 w-28 bg-gray-200 animate-pulse rounded-md"></div>
+                                      : `£${fullPaymentPrice}`}
                                   </div>
                                   <div className="text-xs text-gray-500 line-through">
-                                    £{quotePrice ? quotePrice.toFixed(2) : '0.00'}
+                                    {!glassType 
+                                      ? <div className="h-3 w-16 bg-gray-100 animate-pulse rounded"></div>
+                                      : `£${quotePrice ? quotePrice.toFixed(2) : '0.00'}`}
                                   </div>
                                 </div>
                               </button>
@@ -734,10 +1303,14 @@ const QuotePage: React.FC = () => {
                                   </div>
                                   <div className="text-sm text-gray-500 mb-3">20% now, rest on completion</div>
                                   <div className="text-2xl font-bold text-gray-800 mb-1">
-                                    £{depositPaymentPrice}
+                                    {!glassType 
+                                      ? <div className="h-8 w-28 bg-gray-200 animate-pulse rounded-md"></div>
+                                      : `£${depositPaymentPrice}`}
                                   </div>
                                   <div className="text-xs text-gray-500">
-                                    + £{remainingOnCompletion} on completion
+                                    {!glassType 
+                                      ? <div className="h-3 w-24 bg-gray-100 animate-pulse rounded"></div>
+                                      : `+ £${remainingOnCompletion} on completion`}
                                   </div>
                                 </div>
                               </button>
@@ -765,10 +1338,14 @@ const QuotePage: React.FC = () => {
                                   </div>
                                   <div className="text-sm text-gray-500 mb-3">3 monthly payments</div>
                                   <div className="text-2xl font-bold text-gray-800 mb-1">
-                                    £{splitPaymentPrice}
+                                    {!glassType 
+                                      ? <div className="h-8 w-28 bg-gray-200 animate-pulse rounded-md"></div>
+                                      : `£${splitPaymentPrice}`}
                                   </div>
                                   <div className="text-xs text-gray-500">
-                                    per month for 3 months
+                                    {!glassType 
+                                      ? <div className="h-3 w-24 bg-gray-100 animate-pulse rounded"></div>
+                                      : `per month for 3 months`}
                                   </div>
                                 </div>
                               </button>
@@ -885,25 +1462,25 @@ const QuotePage: React.FC = () => {
                         options={{
                           mode: 'payment',
                           amount: paymentType === 'full' 
-                            ? Math.round(quotePrice * 0.95 * 100)
+                            ? Math.round(currentPrice * 0.95 * 100)
                             : paymentType === 'deposit' 
-                              ? Math.round(quotePrice * 0.2 * 100)
-                              : Math.round(quotePrice * 100),
+                              ? Math.round(currentPrice * 0.2 * 100)
+                              : Math.round(currentPrice * 100),
                           currency: 'gbp',
                           appearance,
-                          paymentMethodCreation: 'manual',
-                          paymentMethodTypes: paymentType === 'split' 
-                            ? ['klarna', 'afterpay_clearpay']
-                            : ['card'],
                         }}
                       >
                         <CheckoutForm 
                           amount={paymentType === 'full' 
-                            ? quotePrice * 0.95
+                            ? currentPrice * 0.95
                             : paymentType === 'deposit' 
-                              ? quotePrice * 0.2
-                              : quotePrice}
+                              ? currentPrice * 0.2
+                              : currentPrice}
                           paymentType={paymentType}
+                          isDisabled={!glassType}
+                          customerEmail={displayedContactDetails.email}
+                          quoteId={router.query.quoteID as string || parsedData.quoteID}
+                          totalPrice={currentPrice}
                         />
                       </Elements>
                     </div>
@@ -913,21 +1490,127 @@ const QuotePage: React.FC = () => {
 
               {/* Quote Details Card */}
               <div className="bg-white rounded-2xl shadow-lg p-8">
-                <h3 className="text-xl font-bold text-gray-800 mb-6">Quote Details</h3>
-                <div className="space-y-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-bold text-gray-800">Quote Details</h3>
+                  <button
+                    onClick={() => setIsQuoteDetailsCollapsed(!isQuoteDetailsCollapsed)}
+                    className="flex items-center text-gray-600 hover:text-gray-800 transition-colors duration-200"
+                  >
+                    <span className="text-sm mr-2">
+                      {isQuoteDetailsCollapsed ? 'Show Details' : 'Hide Details'}
+                    </span>
+                    <svg
+                      className={`w-5 h-5 transform transition-transform duration-200 ${isQuoteDetailsCollapsed ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Appointment Details - Always Visible */}
+                <div className="pb-6 border-b relative">
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-lg font-semibold text-gray-800">Appointment Details</h4>
+                    <div className="absolute right-0 top-0">
+                      <button
+                        onClick={() => setIsEditingAppointment(!isEditingAppointment)}
+                        className="text-sm text-[#0FB8C1] hover:text-[#0DA6AE] transition-colors duration-200 flex items-center"
+                      >
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                        {isEditingAppointment ? 'Cancel' : 'Edit'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {isEditingAppointment ? (
+                    <form onSubmit={(e) => {
+                      e.preventDefault();
+                      handleUpdateAppointment();
+                    }} className="space-y-4">
+                      <div className="grid md:grid-cols-2 gap-6">
+                        <div>
+                          <p className="text-sm text-gray-500 mb-1">Appointment Date</p>
+                          <input
+                            type="date"
+                            value={editedAppointmentData.date}
+                            onChange={(e) => setEditedAppointmentData({ ...editedAppointmentData, date: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0FB8C1] focus:border-transparent"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500 mb-1">Time Slot</p>
+                          <select
+                            value={editedAppointmentData.timeSlot}
+                            onChange={(e) => setEditedAppointmentData({ ...editedAppointmentData, timeSlot: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0FB8C1] focus:border-transparent"
+                            required
+                          >
+                            <option value="">Select Time Slot</option>
+                            <option value="any">Any time</option>
+                            <option value="8am-11am">8:00 AM - 11:00 AM</option>
+                            <option value="11am-2pm">11:00 AM - 2:00 PM</option>
+                            <option value="2pm-5pm">2:00 PM - 5:00 PM</option>
+                            <option value="5pm-8pm">5:00 PM - 8:00 PM</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end space-x-4 mt-4">
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingAppointment(false)}
+                          className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors duration-200"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-4 py-2 bg-[#0FB8C1] text-white rounded-lg hover:bg-[#0DA6AE] transition-colors duration-200"
+                        >
+                          Update Appointment
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div>
+                        <p className="text-sm text-gray-500 mb-1">Appointment Date</p>
+                        <div className="bg-blue-100 text-blue-800 px-3 py-2 rounded-lg text-sm font-semibold">
+                          {displayedContactDetails.date || 'Not specified'}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500 mb-1">Time Slot</p>
+                        <div className="bg-blue-100 text-blue-800 px-3 py-2 rounded-lg text-sm font-semibold">
+                          {displayedContactDetails.timeSlot || 'Not specified'}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Collapsible Details Section */}
+                <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isQuoteDetailsCollapsed ? 'max-h-0 opacity-0' : 'max-h-none opacity-100'}`}>
+                  <div className="space-y-6 pt-6">
                   {/* Vehicle and Windows Section */}
                   <div className="grid md:grid-cols-2 gap-6">
                     <div>
                       <p className="text-sm text-gray-500 mb-1">Vehicle Registration</p>
                       <div className="bg-blue-100 text-blue-800 px-3 py-2 rounded-lg text-sm font-semibold">
-                        {parsedData.vehicleReg}
+                          {(fetchedQuoteData || parsedData).vehicleReg}
                       </div>
                     </div>
                     <div>
                       <p className="text-sm text-gray-500 mb-1">Selected Damage</p>
                       <div className="flex flex-wrap gap-2">
-                        {parsedData.selectedWindows.length ? (
-                          parsedData.selectedWindows.map((window: string) => (
+                          {(fetchedQuoteData || parsedData).selectedWindows.length ? (
+                            (fetchedQuoteData || parsedData).selectedWindows.map((window: string) => (
                             <span key={window} className="bg-pink-100 text-pink-800 px-3 py-2 rounded-lg text-sm font-semibold">
                               {windowNameMapping[window] || window}
                             </span>
@@ -940,7 +1623,7 @@ const QuotePage: React.FC = () => {
                   </div>
 
                   {/* Contact Details Section */}
-                  {parsedData.contactDetails && (
+                    {((fetchedQuoteData || parsedData).contactDetails) && (
                     <div className="grid md:grid-cols-2 gap-6 pt-6 border-t relative">
                       <div className="absolute right-0 top-6">
                         <button
@@ -1053,91 +1736,6 @@ const QuotePage: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Appointment Details */}
-                  <div className="pt-6 border-t relative">
-                    <div className="flex justify-between items-center mb-4">
-                      <h4 className="text-lg font-semibold text-gray-800">Appointment Details</h4>
-                      <div className="absolute right-0 top-6">
-                        <button
-                          onClick={() => setIsEditingAppointment(!isEditingAppointment)}
-                          className="text-sm text-[#0FB8C1] hover:text-[#0DA6AE] transition-colors duration-200 flex items-center"
-                        >
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                          {isEditingAppointment ? 'Cancel' : 'Edit'}
-                        </button>
-                      </div>
-                    </div>
-
-                    {isEditingAppointment ? (
-                      <form onSubmit={(e) => {
-                        e.preventDefault();
-                        handleUpdateAppointment();
-                      }} className="space-y-4">
-                        <div className="grid md:grid-cols-2 gap-6">
-                          <div>
-                            <p className="text-sm text-gray-500 mb-1">Appointment Date</p>
-                            <input
-                              type="date"
-                              value={editedAppointmentData.date}
-                              onChange={(e) => setEditedAppointmentData({ ...editedAppointmentData, date: e.target.value })}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0FB8C1] focus:border-transparent"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-500 mb-1">Time Slot</p>
-                            <select
-                              value={editedAppointmentData.timeSlot}
-                              onChange={(e) => setEditedAppointmentData({ ...editedAppointmentData, timeSlot: e.target.value })}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0FB8C1] focus:border-transparent"
-                              required
-                            >
-                              <option value="">Select Time Slot</option>
-                              <option value="any">Any time</option>
-                              <option value="8am-11am">8:00 AM - 11:00 AM</option>
-                              <option value="11am-2pm">11:00 AM - 2:00 PM</option>
-                              <option value="2pm-5pm">2:00 PM - 5:00 PM</option>
-                              <option value="5pm-8pm">5:00 PM - 8:00 PM</option>
-                            </select>
-                          </div>
-                        </div>
-
-                        <div className="flex justify-end space-x-4 mt-4">
-                          <button
-                            type="button"
-                            onClick={() => setIsEditingAppointment(false)}
-                            className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors duration-200"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="submit"
-                            className="px-4 py-2 bg-[#0FB8C1] text-white rounded-lg hover:bg-[#0DA6AE] transition-colors duration-200"
-                          >
-                            Update Appointment
-                          </button>
-                        </div>
-                      </form>
-                    ) : (
-                      <div className="grid md:grid-cols-2 gap-6">
-                        <div>
-                          <p className="text-sm text-gray-500 mb-1">Appointment Date</p>
-                          <div className="bg-blue-100 text-blue-800 px-3 py-2 rounded-lg text-sm font-semibold">
-                            {displayedContactDetails.date || 'Not specified'}
-                          </div>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-500 mb-1">Time Slot</p>
-                          <div className="bg-blue-100 text-blue-800 px-3 py-2 rounded-lg text-sm font-semibold">
-                            {displayedContactDetails.timeSlot || 'Not specified'}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
                   {/* Payment Details */}
                   <div className="pt-6 border-t">
                     <p className="text-sm text-gray-500 mb-1">Payment Option</p>
@@ -1145,40 +1743,41 @@ const QuotePage: React.FC = () => {
                       {parsedData.paymentOption}
                     </div>
                     
-                    {parsedData.paymentOption === 'insurance' && parsedData.insuranceDetails && (
+                      {(fetchedQuoteData || parsedData).paymentOption === 'insurance' && (fetchedQuoteData || parsedData).insuranceDetails && (
                       <div className="mt-4 grid md:grid-cols-2 gap-4">
                         <div>
                           <p className="text-sm text-gray-500 mb-1">Insurance Provider</p>
                           <div className="bg-blue-100 text-blue-800 px-3 py-2 rounded-lg text-sm font-semibold">
-                            {parsedData.insuranceDetails.insuranceProvider}
+                              {(fetchedQuoteData || parsedData).insuranceDetails.provider || (fetchedQuoteData || parsedData).insuranceDetails.insuranceProvider}
                           </div>
                         </div>
                         <div>
                           <p className="text-sm text-gray-500 mb-1">Policy Number</p>
                           <div className="bg-blue-100 text-blue-800 px-3 py-2 rounded-lg text-sm font-semibold">
-                            {parsedData.insuranceDetails.policyNumber}
+                              {(fetchedQuoteData || parsedData).insuranceDetails.policyNumber}
                           </div>
                         </div>
                         <div>
                           <p className="text-sm text-gray-500 mb-1">Incident Date</p>
                           <div className="bg-blue-100 text-blue-800 px-3 py-2 rounded-lg text-sm font-semibold">
-                            {parsedData.insuranceDetails.incidentDate}
+                              {(fetchedQuoteData || parsedData).insuranceDetails.incidentDate}
                           </div>
                         </div>
                         <div>
                           <p className="text-sm text-gray-500 mb-1">Policy Excess Amount</p>
                           <div className="bg-blue-100 text-blue-800 px-3 py-2 rounded-lg text-sm font-semibold">
-                            £{parsedData.insuranceDetails.policyExcessAmount}
+                              £{(fetchedQuoteData || parsedData).insuranceDetails.excessAmount || (fetchedQuoteData || parsedData).insuranceDetails.policyExcessAmount}
                           </div>
                         </div>
                         <div>
                           <p className="text-sm text-gray-500 mb-1">Policy Expiry Date</p>
                           <div className="bg-blue-100 text-blue-800 px-3 py-2 rounded-lg text-sm font-semibold">
-                            {parsedData.insuranceDetails.policyExpiryDate}
+                              {(fetchedQuoteData || parsedData).insuranceDetails.expiryDate || (fetchedQuoteData || parsedData).insuranceDetails.policyExpiryDate}
                           </div>
                         </div>
                       </div>
                     )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1196,25 +1795,25 @@ const QuotePage: React.FC = () => {
                         options={{
                           mode: 'payment',
                           amount: paymentType === 'full' 
-                            ? Math.round(quotePrice * 0.95 * 100)
+                            ? Math.round(currentPrice * 0.95 * 100)
                             : paymentType === 'deposit' 
-                              ? Math.round(quotePrice * 0.2 * 100)
-                              : Math.round(quotePrice * 100),
+                              ? Math.round(currentPrice * 0.2 * 100)
+                              : Math.round(currentPrice * 100),
                           currency: 'gbp',
                           appearance,
-                          paymentMethodCreation: 'manual',
-                          paymentMethodTypes: paymentType === 'split' 
-                            ? ['klarna', 'afterpay_clearpay']
-                            : ['card'],
                         }}
                       >
                         <CheckoutForm 
                           amount={paymentType === 'full' 
-                            ? quotePrice * 0.95
+                            ? currentPrice * 0.95
                             : paymentType === 'deposit' 
-                              ? quotePrice * 0.2
-                              : quotePrice}
+                              ? currentPrice * 0.2
+                              : currentPrice}
                           paymentType={paymentType}
+                          isDisabled={!glassType}
+                          customerEmail={displayedContactDetails.email}
+                          quoteId={router.query.quoteID as string || parsedData.quoteID}
+                          totalPrice={currentPrice}
                         />
                       </Elements>
                     </div>

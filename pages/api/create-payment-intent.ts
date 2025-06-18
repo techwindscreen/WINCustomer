@@ -11,11 +11,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { amount } = req.body;
+    const { amount, quoteId, paymentType, totalAmount, customerEmail } = req.body;
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100),
       currency: 'gbp',
+      automatic_payment_methods: {
+        enabled: true,
+      },
+      metadata: {
+        quote_id: quoteId || '',
+        payment_type: paymentType || 'full',
+        total_amount: totalAmount ? Math.round(totalAmount * 100).toString() : Math.round(amount * 100).toString(),
+        customer_email: customerEmail || '',
+        created_at: new Date().toISOString()
+      },
+      description: `Windscreen Service - Quote ${quoteId || 'Unknown'} - ${paymentType || 'Full'} Payment`
+    });
+
+    console.log('Payment intent created:', {
+      id: paymentIntent.id,
+      amount: paymentIntent.amount,
+      quote_id: quoteId,
+      payment_type: paymentType
     });
 
     res.status(200).json({ clientSecret: paymentIntent.client_secret });

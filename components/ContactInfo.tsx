@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Car, Info, Calendar, Shield, User, Mail, MapPin, Home, Phone, ClipboardList } from 'lucide-react'
 import Link from 'next/link'
-import Airtable from 'airtable'
 import { useRouter } from 'next/router'
 import Image from 'next/image'
 import { generateArgicCode, GlassProperties } from './argic-code-generator';
@@ -18,6 +17,8 @@ interface VehicleDetails {
   type: string
   style: string
   doorPlan: string
+  quotePrice?: number
+  partExchangeValue?: number
 }
 
 interface Address {
@@ -61,9 +62,16 @@ const vehicleInfoStyles = {
 
 const ContactDetails: React.FC = () => {
   const router = useRouter();
-  const { vehicleReg,  specifications, chipSize, quoteID } = router.query;
+  const { vehicleReg, specifications, chipSize, quoteID, glassType } = router.query;
   
-  const vehicleRegString = typeof vehicleReg === 'string' ? vehicleReg : '';
+  // State for magic link functionality
+  const [fetchedQuoteData, setFetchedQuoteData] = useState<any>(null);
+  const [isLoadingQuoteData, setIsLoadingQuoteData] = useState(false);
+  
+  // Determine if this is a magic link (only quoteID provided)
+  const isMagicLink = quoteID && !vehicleReg && !specifications;
+  
+  const vehicleRegString = (fetchedQuoteData?.vehicleReg || vehicleReg) as string || '';
   const [selectedWindows, setSelectedWindows] = useState<Set<string>>(new Set())
   const [windowDamage, setWindowDamage] = useState<{ [key: string]: string | null }>({})
 
@@ -93,7 +101,6 @@ const ContactDetails: React.FC = () => {
   const [error, setError] = useState<string | null>('');
   const [vehicleDetails, setVehicleDetails] = useState<VehicleDetails | null>(null)
   const [argicCode, setArgicCode] = useState<string>('');
-  const [airtableError, setAirtableError] = useState<string | null>(null);
   const [phoneError, setPhoneError] = useState<string>('');
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [isLoadingAddresses, setIsLoadingAddresses] = useState(false);
@@ -151,24 +158,21 @@ const ContactDetails: React.FC = () => {
     setShowAddressDropdown(true);
     
     try {
-      const response = await fetch(
-        `https://uk1.ukvehicledata.co.uk/api/datapackage/PostcodeLookup?v=2&api_nullitems=1&auth_apikey=6193cc7a-c1b2-469c-ad41-601c6faa294c&key_POSTCODE=${postcode}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          }
-        }
-      );
+      const response = await fetch('/api/address-lookup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ postcode }),
+      });
 
       const data = await response.json();
       console.log('Address API response:', data);
 
-      if (data.Response.StatusCode === "Success" && data.Response.DataItems.AddressDetails) {
-        const addressList = data.Response.DataItems.AddressDetails.AddressList || [];
-        setAddresses(Array.isArray(addressList) ? addressList : [addressList]);
+      if (data.success && data.addresses?.length > 0) {
+        setAddresses(data.addresses);
       } else {
-        setAddressError('No addresses found for this postcode');
+        setAddressError(data.message || 'No addresses found for this postcode');
         setAddresses([]);
         setShowAddressDropdown(false);
       }
@@ -192,39 +196,119 @@ const ContactDetails: React.FC = () => {
     setAddresses([]);
   };
 
+  // Function to fetch quote data for magic links
+  const fetchQuoteData = async (quoteId: string) => {
+    try {
+      setIsLoadingQuoteData(true);
+      console.log('Fetching quote data for:', quoteId);
+      
+      const response = await fetch(`/api/get-quote-data?quoteId=${quoteId}`);
+      console.log('Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        console.error('API error:', errorData);
+        throw new Error(errorData.message || 'Failed to fetch quote data');
+      }
+      
+      const result = await response.json();
+      console.log('API result:', result);
+      
+      if (result.success) {
+        setFetchedQuoteData(result.data);
+        
+        // Set form data from fetched data
+        if (result.data.contactDetails) {
+          setFormData(prev => ({
+            ...prev,
+            ...result.data.contactDetails
+          }));
+        }
+        
+        // Set window data
+        if (result.data.selectedWindows) {
+          setSelectedWindows(new Set(result.data.selectedWindows));
+        }
+        
+        if (result.data.windowDamage) {
+          setWindowDamage(result.data.windowDamage);
+        }
+        
+        if (result.data.specifications) {
+          setParsedSpecifications(result.data.specifications);
+        }
+        
+        // Set payment option
+        if (result.data.paymentOption) {
+          setPaymentOption(result.data.paymentOption);
+        }
+        
+        return result.data;
+      } else {
+        throw new Error('Quote data not found');
+      }
+    } catch (error) {
+      console.error('Error fetching quote data:', error);
+      // For magic links, if data doesn't exist yet, just continue with empty state
+      // This allows the flow to work even if the quote hasn't been fully saved yet
+      console.log('Magic link data not available, continuing with empty state');
+      return null;
+    } finally {
+      setIsLoadingQuoteData(false);
+    }
+  };
+
   useEffect(() => {
-    const { selectedWindows, windowDamage, specifications, damageDescription } = router.query;
-    
-    if (selectedWindows) {
-      try {
-        setSelectedWindows(new Set(JSON.parse(selectedWindows as string)));
-      } catch (err) {
-        console.error("Error parsing selectedWindows:", err);
-      }
-    }
+    const initializeContactInfo = async () => {
+      if (isMagicLink && quoteID) {
+        // Magic link: fetch data from Supabase
+        await fetchQuoteData(quoteID as string);
+      } else {
+        // Regular flow: use URL parameters
+        const { selectedWindows, windowDamage, specifications, damageDescription, glassType } = router.query;
+        
+        if (selectedWindows) {
+          try {
+            setSelectedWindows(new Set(JSON.parse(selectedWindows as string)));
+          } catch (err) {
+            console.error("Error parsing selectedWindows:", err);
+          }
+        }
 
-    if (windowDamage) {
-      try {
-        setWindowDamage(JSON.parse(windowDamage as string));
-      } catch (err) {
-        console.error("Error parsing windowDamage:", err);
-      }
-    }
+        if (windowDamage) {
+          try {
+            setWindowDamage(JSON.parse(windowDamage as string));
+          } catch (err) {
+            console.error("Error parsing windowDamage:", err);
+          }
+        }
 
-    if (specifications) {
-      try {
-        setParsedSpecifications(JSON.parse(specifications as string));
-      } catch (err) {
-        console.error("Error parsing specifications:", err);
+        if (specifications) {
+          try {
+            setParsedSpecifications(JSON.parse(specifications as string));
+          } catch (err) {
+            console.error("Error parsing specifications:", err);
+          }
+        }
       }
-    }
-  }, [router.query]);
+    };
+
+    initializeContactInfo();
+  }, [quoteID, isMagicLink, router.query]);
 
   const fetchVehicleDetails = async () => {
-    if (!vehicleReg) {
+    const regToUse = fetchedQuoteData?.vehicleReg || vehicleReg;
+    
+    if (!regToUse) {
       console.log('No vehicleReg provided');
       setVehicleDetails(null)
       return
+    }
+    
+    // If we have fetched vehicle details from magic link, use those instead
+    if (fetchedQuoteData?.vehicleDetails) {
+      setVehicleDetails(fetchedQuoteData.vehicleDetails);
+      return;
     }
 
     setIsLoading(true)
@@ -236,7 +320,7 @@ const ContactDetails: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ registration: vehicleReg }),
+        body: JSON.stringify({ registration: regToUse }),
       });
 
       if (!response.ok) {
@@ -261,24 +345,27 @@ const ContactDetails: React.FC = () => {
 
   useEffect(() => {
     fetchVehicleDetails()
-  }, [vehicleReg])
+  }, [vehicleReg, fetchedQuoteData])
 
-  const uploadArgicCodeToAirtable = async (quoteId: string, argicCode: string) => {
+  const uploadArgicCodeToSupabase = async (quoteId: string, argicCode: string) => {
     try {
-      const base = new Airtable({ apiKey: process.env.NEXT_PUBLIC_AIRTABLE_API_KEY })
-        .base(process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID!);
+      const response = await fetch('/api/update-argic-code', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          quoteId,
+          argicCode
+        }),
+      });
 
-      await base('Quotes').update([
-        {
-          id: quoteId,
-          fields: {
-            'Argic Code': argicCode
-          }
-        }
-      ]);
+      if (!response.ok) {
+        throw new Error('Failed to update ARGIC code');
+      }
     } catch (error) {
-      console.error('Error updating Airtable:', error);
-      setAirtableError('Failed to update quote information');
+      console.error('Error updating ARGIC code:', error);
+      setError('Failed to update quote information');
     }
   };
 
@@ -297,7 +384,7 @@ const ContactDetails: React.FC = () => {
       // Get quoteID from router query
       const { quoteID } = router.query;
       if (quoteID && code) {
-        uploadArgicCodeToAirtable(quoteID as string, code);
+        uploadArgicCodeToSupabase(quoteID as string, code);
       }
     }
   }, [vehicleDetails, selectedWindows, parsedSpecifications, router.query]);
@@ -307,32 +394,38 @@ const ContactDetails: React.FC = () => {
       if (!quoteID) return;
       
       try {
-        const base = new Airtable({ apiKey: process.env.NEXT_PUBLIC_AIRTABLE_API_KEY })
-          .base(process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID!);
-          
-        const records = await base('Submissions').select({
-          filterByFormula: `{QuoteID} = '${quoteID}'`
-        }).firstPage();
+        const response = await fetch('/api/existing-data', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ quoteID }),
+        });
         
-        if (records.length > 0) {
-          const record = records[0];
+        if (!response.ok) {
+          throw new Error('Failed to fetch existing data');
+        }
+
+        const data = await response.json();
+        
+        if (data.success) {
           setFormData({
-            fullName: String(record.fields['Full Name'] || ''),
-            email: String(record.fields['Email'] || ''),
-            mobile: String(record.fields['Mobile'] || ''),
-            postcode: String(record.fields['PostcodeAccident'] || ''),
-            location: String(record.fields['Location'] || ''),
-            date: String(record.fields['Appointment Date'] || ''),
-            timeSlot: String(record.fields['Time Slot'] || 'any'),
-            insuranceProvider: String(record.fields['Insurance Provider'] || ''),
-            policyNumber: String(record.fields['Policy Number'] || ''),
-            incidentDate: String(record.fields['Incident Date'] || ''),
-            policyExcessAmount: String(record.fields['Policy Excess'] || ''),
-            policyExpiryDate: String(record.fields['Policy Expiry'] || ''),
+            fullName: String(data.existingData.fullName || ''),
+            email: String(data.existingData.email || ''),
+            mobile: String(data.existingData.mobile || ''),
+            postcode: String(data.existingData.postcode || ''),
+            location: String(data.existingData.location || ''),
+            date: String(data.existingData.date || ''),
+            timeSlot: String(data.existingData.timeSlot || 'any'),
+            insuranceProvider: String(data.existingData.insuranceProvider || ''),
+            policyNumber: String(data.existingData.policyNumber || ''),
+            incidentDate: String(data.existingData.incidentDate || ''),
+            policyExcessAmount: String(data.existingData.policyExcessAmount || ''),
+            policyExpiryDate: String(data.existingData.policyExpiryDate || ''),
             areaCode: '+44'
           });
           
-          setPaymentOption(record.fields['Payment Option'] as 'self' | 'insurance' || 'self');
+          setPaymentOption(data.existingData.paymentOption as 'self' | 'insurance' || 'self');
         }
       } catch (error) {
         console.error('Error fetching existing data:', error);
@@ -361,7 +454,12 @@ const ContactDetails: React.FC = () => {
         },
         body: JSON.stringify({
           formData,
-          quoteId
+          quoteId,
+          selectedWindows: Array.from(selectedWindows),
+          windowDamage: windowDamage,
+          specifications: parsedSpecifications,
+          paymentOption: paymentOption,
+          glassType: glassType || fetchedQuoteData?.glassType
         }),
       });
 
@@ -371,32 +469,12 @@ const ContactDetails: React.FC = () => {
         throw new Error(responseData.message || 'Failed to submit form');
       }
 
+      // Navigate with only quoteID for cleaner magic links
       await router.push({
         pathname: '/quote',
         query: {
           quoteID: quoteId,
-          vehicleReg: vehicleRegString,
-          selectedWindows: JSON.stringify(Array.from(selectedWindows)),
-          windowDamage: JSON.stringify(windowDamage),
-          specifications: JSON.stringify(parsedSpecifications),
-          paymentOption,
-          insuranceDetails: JSON.stringify(paymentOption === 'insurance' ? {
-            insuranceProvider: formData.insuranceProvider,
-            policyNumber: formData.policyNumber,
-            incidentDate: formData.incidentDate,
-            policyExcessAmount: formData.policyExcessAmount,
-            policyExpiryDate: formData.policyExpiryDate,
-          } : null),
-          contactDetails: JSON.stringify({
-            fullName: formData.fullName,
-            email: formData.email,
-            mobile: formData.mobile,
-            postcode: formData.postcode,
-            location: formData.location,
-            date: formData.date,
-            timeSlot: formData.timeSlot
-          }),
-          chipSize: JSON.stringify(chipSize)
+          ...(glassType && { glassType })
         }
       });
 
@@ -477,8 +555,15 @@ const ContactDetails: React.FC = () => {
 
             <div className="flex flex-col lg:flex-row gap-6 justify-between">
               <div className="flex-grow max-w-4xl w-full">
-                <p className="text-gray-600 mb-4">Please fill in your contact details below</p>
-                <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+                {isLoadingQuoteData ? (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#0FB8C1]" />
+                    <p className="text-gray-600 mt-4">Loading your quote information...</p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-gray-600 mb-4">Please fill in your contact details below</p>
+                    <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
                   <div className="mb-6">
                     <div className="flex flex-col sm:flex-row gap-3">
                       <button
@@ -779,13 +864,16 @@ const ContactDetails: React.FC = () => {
                     pathname: '/damage-location',
                     query: { 
                       vehicleReg: vehicleRegString,
-                      postcode: formData.postcode
+                      postcode: formData.postcode,
+                      ...(glassType && { glassType })
                     }
                   })} 
                   className="mt-4 text-[#0FB8C1] underline"
                 >
                   Back
                 </button>
+                  </>
+                )}
               </div>
 
               <div className="w-full lg:w-80 bg-gray-100 p-4 rounded-lg lg:sticky lg:top-4">
@@ -809,8 +897,8 @@ const ContactDetails: React.FC = () => {
                   </span>
                 </div>
 
+                {/* Glass Damage Section */}
                 <div className="bg-white p-4 rounded-lg">
-                  {/* Glass Damage Section */}
                   <div className="mb-4">
                     <div className="text-gray-500 text-sm uppercase font-bold mb-1 flex items-center gap-2">
                       <Car className="w-4 h-4 text-[#0FB8C1]" />
@@ -855,6 +943,18 @@ const ContactDetails: React.FC = () => {
                       ))
                     ) : (
                       <div className="text-sm text-gray-500 italic">No glass selected</div>
+                    )}
+                    
+                    {/* Glass Type Section */}
+                    {(glassType || fetchedQuoteData?.glassType) && (
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500 text-sm font-medium">Glass Type:</span>
+                          <span className="text-sm bg-green-50 border border-green-200 px-3 py-1 rounded-full text-green-800 font-medium">
+                            {glassType || fetchedQuoteData?.glassType} Glass
+                          </span>
+                        </div>
+                      </div>
                     )}
                   </div>
 
@@ -905,17 +1005,7 @@ const ContactDetails: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="mt-4">
-                      <div className="text-gray-500 text-sm uppercase font-bold mb-1 flex items-center gap-2">
-                        <ClipboardList className="w-4 h-4 text-[#0FB8C1]" />
-                        ARGIC CODE
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded text-sm">
-                          {vehicleRegString === 'HN11EYW' ? '2448AGNMV1B' : 'Failed To Fetch Argic'}
-                        </span>
-                      </div>
-                    </div>
+
                   </div>
                 </div>
               </div>

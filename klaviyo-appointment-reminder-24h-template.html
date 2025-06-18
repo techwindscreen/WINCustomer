@@ -1,0 +1,141 @@
+<html>
+  <body>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f9f9f9; padding: 20px;">
+      <!-- Header -->
+      <div style="background-color: #0FB8C1; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+        <img src="https://d3k81ch9hvuctc.cloudfront.net/company/XjdccL/images/5ca10ab9-79c7-4755-af6e-07ffff417b0a.png" alt="WindscreenCompare Logo" style="max-width: 200px; height: auto; margin-bottom: 10px;">
+        <h1 style="margin: 0; font-size: 24px;">
+          WindscreenCompare
+        </h1>
+        <p style="margin: 5px 0 0 0; font-size: 16px;">
+          Reminder: Your appointment is tomorrow
+        </p>
+      </div>
+
+      <!-- Content -->
+      <div style="background-color: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <!-- Reminder Message -->
+        <h2 style="color: #0FB8C1; margin-top: 0; font-size: 20px; margin-bottom: 20px;">
+          Tomorrow's Appointment Reminder
+        </h2>
+        
+        <p style="color: #333; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+          Hi {{event.user_name}}, just a friendly reminder that your windscreen replacement appointment is scheduled for tomorrow. Here's everything you need to know to prepare.
+        </p>
+
+        <!-- Tomorrow's Appointment -->
+        <div style="background-color: #e8f8f9; padding: 20px; border-radius: 6px; margin-bottom: 25px; border: 2px solid #0FB8C1;">
+          <h3 style="color: #0FB8C1; margin-top: 0; font-size: 18px; margin-bottom: 15px;">
+            📅 Tomorrow's Appointment
+          </h3>
+          <div style="font-size: 16px; line-height: 1.8;">
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Date:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.appointment_date}}</span>
+            </p>
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Time:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.appointment_time}}</span>
+            </p>
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Location:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.service_address}}</span>
+            </p>
+            <p style="margin: 0;">
+              <strong style="color: #333;">Technician:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.technician_name}} ({{event.technician_phone}})</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- Pre-Appointment Checklist -->
+        <div style="background-color: #fff3cd; padding: 20px; border-radius: 6px; margin-bottom: 25px; border-left: 4px solid #ffc107;">
+          <h3 style="color: #856404; margin-top: 0; font-size: 18px; margin-bottom: 15px;">
+            ✅ Pre-Appointment Checklist
+          </h3>
+          <div style="color: #856404; font-size: 14px; line-height: 1.8;">
+            <p style="margin: 0 0 15px 0; font-weight: bold;">Please complete these steps before our technician arrives:</p>
+            <ul style="margin: 0; padding-left: 20px;">
+              <li style="margin-bottom: 8px;"><strong>Clear your vehicle:</strong> Remove all items from dashboard, windscreen area, and sun visors</li>
+              <li style="margin-bottom: 8px;"><strong>Parking access:</strong> Ensure your vehicle is parked where our van can access it easily</li>
+              <li style="margin-bottom: 8px;"><strong>Driveway space:</strong> Clear at least 3 meters of space around your vehicle</li>
+              <li style="margin-bottom: 8px;"><strong>Vehicle keys:</strong> Have your keys ready for the technician</li>
+              <li style="margin-bottom: 8px;"><strong>Weather protection:</strong> If possible, park under cover or in a garage</li>
+              <li style="margin-bottom: 8px;"><strong>Power access:</strong> Ensure there's access to a power outlet within 20 meters</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Service Details -->
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 25px;">
+          <h3 style="color: #0FB8C1; margin-top: 0; font-size: 18px; margin-bottom: 15px;">
+            🚗 Service Details
+          </h3>
+          <div style="font-size: 16px; line-height: 1.8;">
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Vehicle:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.vehicle_registration}} ({{event.vehicle_make}} {{event.vehicle_model}})</span>
+            </p>
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Glass Type:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.glass_type}}</span>
+            </p>
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Estimated Duration:</strong> <span style="color: #0FB8C1; font-weight: 600;">60-90 minutes</span>
+            </p>
+            <p style="margin: 0;">
+              <strong style="color: #333;">Booking Reference:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.booking_reference}}</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- Important Notes -->
+        <div style="background-color: #e8f8f9; padding: 20px; border-radius: 6px; margin-bottom: 25px; border-left: 4px solid #0FB8C1;">
+          <h3 style="color: #0FB8C1; margin-top: 0; font-size: 16px; margin-bottom: 10px;">
+            📝 Important Notes
+          </h3>
+          <ul style="color: #333; font-size: 14px; line-height: 1.6; margin: 0; padding-left: 20px;">
+            <li>Our technician will call you 30 minutes before arrival</li>
+            <li>Please ensure someone is available to provide vehicle access</li>
+            <li>Payment will be collected after the work is completed</li>
+            <li>You'll receive care instructions for your new windscreen</li>
+            <li>A 12-month warranty is included with your replacement</li>
+          </ul>
+        </div>
+
+        <!-- Need to Reschedule? -->
+        <div style="background-color: #f8d7da; padding: 20px; border-radius: 6px; margin-bottom: 25px; border-left: 4px solid #dc3545;">
+          <h3 style="color: #721c24; margin-top: 0; font-size: 16px; margin-bottom: 10px;">
+            Need to Reschedule?
+          </h3>
+          <p style="color: #721c24; font-size: 14px; margin: 0 0 15px 0;">
+            If you need to change your appointment time, please contact us as soon as possible. We require at least 4 hours notice for rescheduling.
+          </p>
+          <div style="text-align: center;">
+            <a href="mailto:hello@windscreencompare.com" style="background-color: #dc3545; 
+                  color: white; 
+                  padding: 12px 25px; 
+                  text-decoration: none; 
+                  border-radius: 6px; 
+                  font-size: 14px; 
+                  font-weight: bold;
+                  display: inline-block;">
+              Email to Reschedule
+            </a>
+          </div>
+        </div>
+
+        <!-- Contact Information -->
+        <div style="text-align: center; margin-top: 25px;">
+          <p style="color: #666; font-size: 14px; margin: 0;">
+            Questions? Contact us at <a href="mailto:hello@windscreencompare.com" style="color: #0FB8C1; text-decoration: none;">hello@windscreencompare.com</a>
+          </p>
+        </div>
+
+        <!-- Footer Info -->
+        <div style="text-align: center; margin-top: 25px; padding-top: 20px; border-top: 1px solid #eee;">
+          <p style="color: #666; font-size: 14px; margin: 0 0 15px 0;">
+            Booking Reference: {{event.booking_reference}} | {{event.formatted_timestamp}}
+          </p>
+          <p style="color: #999; font-size: 12px; margin: 0;">
+            {% unsubscribe %}
+          </p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html> 

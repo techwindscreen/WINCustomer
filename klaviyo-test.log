@@ -1,0 +1,61 @@
+
+> v0-project@1.0.0 dev
+> next dev
+
+ ⚠ Port 3000 is in use, trying 3001 instead.
+   ▲ Next.js 15.1.7
+   - Local:        http://localhost:3001
+   - Network:      http://192.168.6.223:3001
+   - Environments: .env.local
+
+ ✓ Starting...
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ✓ Ready in 1066ms
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote
+ ⚠ Duplicate page detected. pages/quote.js and pages/quote.tsx resolve to /quote

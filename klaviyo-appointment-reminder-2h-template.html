@@ -1,0 +1,143 @@
+<html>
+  <body>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f9f9f9; padding: 20px;">
+      <!-- Header -->
+      <div style="background-color: #0FB8C1; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+        <img src="https://d3k81ch9hvuctc.cloudfront.net/company/XjdccL/images/5ca10ab9-79c7-4755-af6e-07ffff417b0a.png" alt="WindscreenCompare Logo" style="max-width: 200px; height: auto; margin-bottom: 10px;">
+        <h1 style="margin: 0; font-size: 24px;">
+          WindscreenCompare
+        </h1>
+        <p style="margin: 5px 0 0 0; font-size: 16px;">
+          Your technician is on the way!
+        </p>
+      </div>
+
+      <!-- Content -->
+      <div style="background-color: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <!-- On The Way Message -->
+        <h2 style="color: #0FB8C1; margin-top: 0; font-size: 20px; margin-bottom: 20px;">
+          🚐 We're On Our Way!
+        </h2>
+        
+        <p style="color: #333; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+          Hi {{event.user_name}}, your windscreen replacement technician is preparing to head to your location. Here's what you need to know for the next couple of hours.
+        </p>
+
+        <!-- Time Window Reminder -->
+        <div style="background-color: #e8f8f9; padding: 20px; border-radius: 6px; margin-bottom: 25px; border: 2px solid #0FB8C1;">
+          <h3 style="color: #0FB8C1; margin-top: 0; font-size: 18px; margin-bottom: 15px;">
+            ⏰ Today's Appointment
+          </h3>
+          <div style="font-size: 16px; line-height: 1.8;">
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Arrival Window:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.appointment_time}}</span>
+            </p>
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Location:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.service_address}}</span>
+            </p>
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Technician:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.technician_name}}</span>
+            </p>
+            <p style="margin: 0;">
+              <strong style="color: #333;">Contact:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.technician_phone}}</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- ETA Instructions -->
+        <div style="background-color: #d4edda; padding: 20px; border-radius: 6px; margin-bottom: 25px; border-left: 4px solid #28a745;">
+          <h3 style="color: #155724; margin-top: 0; font-size: 18px; margin-bottom: 15px;">
+            📍 ETA & Contact Information
+          </h3>
+          <div style="color: #155724; font-size: 14px; line-height: 1.8;">
+            <p style="margin: 0 0 15px 0;"><strong>Your technician will:</strong></p>
+            <ul style="margin: 0; padding-left: 20px;">
+              <li style="margin-bottom: 8px;">Call you 30 minutes before arrival with exact ETA</li>
+              <li style="margin-bottom: 8px;">Send a text message when they're 10 minutes away</li>
+              <li style="margin-bottom: 8px;">Arrive within your scheduled time window</li>
+              <li style="margin-bottom: 8px;">Contact you directly if there are any delays</li>
+            </ul>
+            <p style="margin: 15px 0 0 0; font-weight: bold;">
+              Direct technician contact: <a href="tel:{{event.technician_phone}}" style="color: #28a745; text-decoration: none;">{{event.technician_phone}}</a>
+            </p>
+          </div>
+        </div>
+
+        <!-- Final Driveway Prep -->
+        <div style="background-color: #fff3cd; padding: 20px; border-radius: 6px; margin-bottom: 25px; border-left: 4px solid #ffc107;">
+          <h3 style="color: #856404; margin-top: 0; font-size: 18px; margin-bottom: 15px;">
+            🏠 Final Driveway Preparation
+          </h3>
+          <div style="color: #856404; font-size: 14px; line-height: 1.8;">
+            <p style="margin: 0 0 15px 0; font-weight: bold;">Please ensure these are ready NOW:</p>
+            <ul style="margin: 0; padding-left: 20px;">
+              <li style="margin-bottom: 8px;"><strong>Vehicle access:</strong> Keys ready, vehicle unlocked if needed</li>
+              <li style="margin-bottom: 8px;"><strong>Clear workspace:</strong> 3+ meters of space around your vehicle</li>
+              <li style="margin-bottom: 8px;"><strong>Power access:</strong> Extension lead ready if power outlet is far</li>
+              <li style="margin-bottom: 8px;"><strong>Interior cleared:</strong> Dashboard and windscreen area completely empty</li>
+              <li style="margin-bottom: 8px;"><strong>Parking position:</strong> Vehicle positioned for easy van access</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Service Summary -->
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 25px;">
+          <h3 style="color: #0FB8C1; margin-top: 0; font-size: 18px; margin-bottom: 15px;">
+            🚗 Today's Service
+          </h3>
+          <div style="font-size: 16px; line-height: 1.8;">
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Vehicle:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.vehicle_registration}} ({{event.vehicle_make}} {{event.vehicle_model}})</span>
+            </p>
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Glass Type:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.glass_type}}</span>
+            </p>
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Duration:</strong> <span style="color: #0FB8C1; font-weight: 600;">60-90 minutes</span>
+            </p>
+            <p style="margin: 0;">
+              <strong style="color: #333;">Reference:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.booking_reference}}</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- What Happens Next -->
+        <div style="background-color: #e8f8f9; padding: 20px; border-radius: 6px; margin-bottom: 25px; border-left: 4px solid #0FB8C1;">
+          <h3 style="color: #0FB8C1; margin-top: 0; font-size: 16px; margin-bottom: 10px;">
+            🔧 What Happens When We Arrive
+          </h3>
+          <ul style="color: #333; font-size: 14px; line-height: 1.6; margin: 0; padding-left: 20px;">
+            <li>Technician will introduce themselves and confirm the work</li>
+            <li>Quick assessment of the damage and vehicle condition</li>
+            <li>Professional removal of the old windscreen</li>
+            <li>Installation of your new {{event.glass_type}} windscreen</li>
+            <li>Quality check and cleanup of the work area</li>
+            <li>Payment processing and warranty documentation</li>
+          </ul>
+        </div>
+
+
+
+        <!-- Thank You Message -->
+        <div style="text-align: center; margin-top: 25px;">
+          <p style="color: #333; font-size: 16px; margin: 0 0 10px 0;">
+            Thank you for choosing WindscreenCompare!
+          </p>
+          <p style="color: #666; font-size: 14px; margin: 0;">
+            We look forward to providing you with excellent service today.
+          </p>
+        </div>
+
+        <!-- Footer Info -->
+        <div style="text-align: center; margin-top: 25px; padding-top: 20px; border-top: 1px solid #eee;">
+          <p style="color: #666; font-size: 14px; margin: 0 0 15px 0;">
+            Booking Reference: {{event.booking_reference}} | {{event.formatted_timestamp}}
+          </p>
+          <p style="color: #999; font-size: 12px; margin: 0;">
+            {% unsubscribe %}
+          </p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html> 

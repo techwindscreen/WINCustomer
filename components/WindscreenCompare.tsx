@@ -15,11 +15,13 @@ const WindscreenCompare: React.FC = () => {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    const savedData = localStorage.getItem('windscreenCompareData');
-    if (savedData) {
-      const { vehicleReg: savedReg, postcode: savedPostcode } = JSON.parse(savedData);
-      setVehicleReg(savedReg);
-      setPostcode(savedPostcode);
+    if (typeof window !== 'undefined') {
+      const savedData = localStorage.getItem('windscreenCompareData');
+      if (savedData) {
+        const { vehicleReg: savedReg, postcode: savedPostcode } = JSON.parse(savedData);
+        setVehicleReg(savedReg);
+        setPostcode(savedPostcode);
+      }
     }
   }, []);
 
@@ -57,11 +59,31 @@ const WindscreenCompare: React.FC = () => {
     const quoteID = `WC${timestamp}${random}`;
 
     try {
-      localStorage.setItem('windscreenCompareData', JSON.stringify({
-        vehicleReg: vehicleReg.toUpperCase(),
-        postcode: postcode.toUpperCase(),
-        quoteID
-      }));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('windscreenCompareData', JSON.stringify({
+          vehicleReg: vehicleReg.toUpperCase(),
+          postcode: postcode.toUpperCase(),
+          quoteID
+        }));
+      }
+
+      // Track quote started event in Klaviyo
+      try {
+        await fetch('/api/track-quote-started', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            vehicleReg: vehicleReg.toUpperCase(),
+            quoteId: quoteID,
+            // userEmail and userPhone are not available at this stage
+          }),
+        });
+      } catch (trackingError) {
+        console.error('Tracking error:', trackingError);
+        // Don't block the user flow if tracking fails
+      }
 
       router.push({
         pathname: '/damage-location',

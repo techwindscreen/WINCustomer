@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, Fragment } from 'react'
 import { Car, Info, Upload, X } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
-import Airtable from 'airtable'
 import Image from 'next/image'
 import { generateArgicCode, GlassProperties } from './argic-code-generator'
 import { Footer } from './sections/Footer'
@@ -111,7 +110,7 @@ const getTooltipPosition = (windowWidth: number) => {
 
 const DamageLocation: React.FC<DamageLocationProps> = () => {
   const router = useRouter()
-  const { vehicleReg } = router.query
+  const { vehicleReg, glassType } = router.query
   const [selectedWindows, setSelectedWindows] = useState<Set<string>>(new Set())
   const [currentStep, setCurrentStep] = useState(2)
   const [windowDamage, setWindowDamage] = useState<{ [key: string]: string | null }>({})
@@ -126,11 +125,21 @@ const DamageLocation: React.FC<DamageLocationProps> = () => {
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
   const [hoverTooltip, setHoverTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
   const [isContinueLoading, setIsContinueLoading] = useState(false);
-  const [hasHandledImageUpload, setHasHandledImageUpload] = useState(false);
+
   const [isCommentsVisible, setIsCommentsVisible] = useState(false);
-  const [glassType, setGlassType] = useState<'OEM' | 'OEE'>('OEE');
   // Add new state for window width
-  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 0);
+  const [windowWidth, setWindowWidth] = useState(0);
+  const [isMounted, setIsMounted] = useState(false);
+  // Add state to track global image upload status
+  const [globalImageUploadStatus, setGlobalImageUploadStatus] = useState<'pending' | 'uploaded' | 'skipped'>('pending');
+  // Add state for glass color selection
+  const [glassColor, setGlassColor] = useState<{ [key: string]: string | null }>({});
+
+  // Helper function to identify rear windows
+  const isRearWindow = (windowId: string) => {
+    const rearWindowIds = ['jqvmap1_rw', 'jqvmap1_dr', 'jqvmap1_vr', 'jqvmap1_qr', 'jqvmap1_dd', 'jqvmap1_vg', 'jqvmap1_qg'];
+    return rearWindowIds.includes(windowId);
+  };
 
   // Function to process vehicle data
 const processVehicleData = (vehicleDetails: VehicleDetails, windowSpecifications: string[]) => {
@@ -143,7 +152,7 @@ const processVehicleData = (vehicleDetails: VehicleDetails, windowSpecifications
   // This part can be customized based on what the function needs to do with these values.
 };
 
-const uploadVehicleDetailsToAirtable = async (details: VehicleDetails) => {
+const uploadVehicleDetailsToSupabase = async (details: VehicleDetails) => {
   try {
     const quoteId = router.query.quoteID as string;
     
@@ -187,26 +196,22 @@ const generateAndUploadArgicCode = async (quoteId: string) => {
   const code = generateArgicCode(vehicleDetails, selectedWindows, glassProps);
 
   try {
-    const base = new Airtable({ apiKey: process.env.NEXT_PUBLIC_AIRTABLE_API_KEY })
-      .base(process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID!);
+    const response = await fetch('/api/update-argic-code', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        quoteId,
+        argicCode: code
+      }),
+    });
 
-    // First, find the record with the matching QuoteID
-    const records = await base('Submissions').select({
-      filterByFormula: `{QuoteID} = '${quoteId}'`
-    }).firstPage();
-
-    if (records && records.length > 0) {
-      await base('Submissions').update([
-        {
-          id: records[0].id,
-          fields: {
-            'Argic Code': code
-          }
-        }
-      ]);
-    } else {
-      console.error('No record found with QuoteID:', quoteId);
+    if (!response.ok) {
+      throw new Error('Failed to update ARGIC code');
     }
+
+    console.log('ARGIC code updated successfully');
   } catch (error) {
     console.error('Error updating ARGIC code:', error);
   }
@@ -248,7 +253,7 @@ const generateAndUploadArgicCode = async (quoteId: string) => {
       
       if (data.success) {
         setVehicleDetails(data.vehicleDetails);
-        await uploadVehicleDetailsToAirtable(data.vehicleDetails);
+        await uploadVehicleDetailsToSupabase(data.vehicleDetails);
       } else {
         throw new Error('Failed to fetch vehicle data');
       }
@@ -266,8 +271,27 @@ const generateAndUploadArgicCode = async (quoteId: string) => {
       const newSet = new Set(prev)
       if (newSet.has(windowId)) {
         newSet.delete(windowId)
+        // Remove damage type and glass color when window is deselected
+        setWindowDamage(prev => {
+          const newDamage = { ...prev }
+          delete newDamage[windowId]
+          return newDamage
+        })
+        setGlassColor(prev => {
+          const newColor = { ...prev }
+          delete newColor[windowId]
+          return newColor
+        })
+        // Reset global image upload status if no windows are selected
+        if (newSet.size === 0) {
+          setGlobalImageUploadStatus('pending')
+        }
       } else {
         newSet.add(windowId)
+        // Keep global status as pending when first window is selected
+        if (prev.size === 0) {
+          setGlobalImageUploadStatus('pending')
+        }
       }
       return newSet
     })
@@ -281,6 +305,8 @@ const generateAndUploadArgicCode = async (quoteId: string) => {
     { id: 'passenger-front', path: 'M850,250 L950,250 L950,420 L850,400 Z' },
     { id: 'passenger-rear', path: 'M850,400 L950,420 L950,580 L850,550 Z' },
   ]
+
+
 
   const renderDamageOptions = (windowId: string) => {
     const windowLabel = regions.find(r => r.id === windowId)?.label;
@@ -306,6 +332,9 @@ const generateAndUploadArgicCode = async (quoteId: string) => {
       damageOptions = ['Smashed', 'Leaking', 'Faulty Mechanism']
     }
   
+    // Don't show individual image upload sections - handled globally
+
+    // Show damage options after image upload is completed or skipped
     return (
       <div className="mt-8 border-b border-gray-200 pb-8">
         <h3 className="text-2xl font-bold mb-4">{title}</h3>
@@ -364,6 +393,29 @@ const generateAndUploadArgicCode = async (quoteId: string) => {
             </button>
           ))}
         </div>
+
+        {/* Glass Color Selection for Rear Windows - shown after damage type is selected */}
+        {isRearWindow(windowId) && windowDamage[windowId] && (
+          <div className="mt-6">
+            <h4 className="text-xl font-bold mb-4">Select A Glass Colour</h4>
+            <div className="flex flex-wrap gap-3">
+              {['Manufacturer Standard', 'Tinted Black', 'Not Sure?'].map((color) => (
+                <button
+                  key={color}
+                  onClick={() => setGlassColor(prev => ({ ...prev, [windowId]: color }))}
+                  className={`
+                    px-6 py-3 rounded-full border-2 transition-all
+                    ${glassColor[windowId] === color
+                      ? 'border-[#0FB8C1] bg-white text-[#0FB8C1]'
+                      : 'border-gray-300 hover:border-gray-400 bg-white text-gray-700'}
+                  `}
+                >
+                  {color}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
   
         {/* Add chip size question when Chipped is selected */}
         {windowDamage[windowId] === 'Chipped' && (
@@ -476,84 +528,13 @@ const generateAndUploadArgicCode = async (quoteId: string) => {
                   </div>
                 </div>
 
-                {/* Show upload image section after specifications */}
-                <div className="mt-6">
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleImageUpload}
-                    accept="image/*"
-                    className="hidden"
-                  />
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isLoading}
-                    className={`mt-6 px-6 py-3 rounded-full bg-[#0FB8C1] text-white flex items-center justify-center hover:bg-[#0CA7AF] transition-colors ${
-                      isLoading ? 'opacity-50 cursor-not-allowed' : ''
-                    }`}
-                  >
-                    <Upload className="mr-2" size={20} />
-                    {isLoading ? 'Uploading...' : 'Upload An Image'}
-                    {uploadedImages.length > 0 && !isLoading && (
-                      <span className="ml-2">({uploadedImages.length})</span>
-                    )}
-                  </button>
 
-                  {/* Image previews */}
-                  {uploadedImages.length > 0 && (
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {uploadedImages.map((imageUrl, index) => (
-                        <div key={index} className="relative">
-                          <img
-                            src={imageUrl}
-                            alt={`Upload ${index + 1}`}
-                            className="w-20 h-20 object-cover rounded"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
               </>
             )
           ) : windowDamage[windowId] === 'Leaking' ? (
-            // For leaking damage, only show upload and comments
+            // For leaking damage, no additional options needed
             <div className="mt-6">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleImageUpload}
-                accept="image/*"
-                className="hidden"
-              />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isLoading}
-                className={`mt-6 px-6 py-3 rounded-full bg-[#0FB8C1] text-white flex items-center justify-center hover:bg-[#0CA7AF] transition-colors ${
-                  isLoading ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
-              >
-                <Upload className="mr-2" size={20} />
-                {isLoading ? 'Uploading...' : 'Upload An Image'}
-                {uploadedImages.length > 0 && !isLoading && (
-                  <span className="ml-2">({uploadedImages.length})</span>
-                )}
-              </button>
-
-              {/* Image previews */}
-              {uploadedImages.length > 0 && (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {uploadedImages.map((imageUrl, index) => (
-                    <div key={index} className="relative">
-                      <img
-                        src={imageUrl}
-                        alt={`Upload ${index + 1}`}
-                        className="w-20 h-20 object-cover rounded"
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
+              {/* Leaking damage selected - no additional configuration needed */}
             </div>
           ) : windowDamage[windowId] ? ( // Only show specifications if damage type is selected
             <>
@@ -616,86 +597,15 @@ const generateAndUploadArgicCode = async (quoteId: string) => {
                 </div>
               </div>
 
-              {/* Upload image section */}
-              <div className="mt-6">
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleImageUpload}
-                  accept="image/*"
-                  className="hidden"
-                />
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isLoading}
-                  className={`mt-6 px-6 py-3 rounded-full bg-[#0FB8C1] text-white flex items-center justify-center hover:bg-[#0CA7AF] transition-colors ${
-                isLoading ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
-                >
-                  <Upload className="mr-2" size={20} />
-                  {isLoading ? 'Uploading...' : 'Upload An Image'}
-                  {uploadedImages.length > 0 && !isLoading && (
-                    <span className="ml-2">({uploadedImages.length})</span>
-                  )}
-                </button>
 
-                {/* Image previews */}
-                {uploadedImages.length > 0 && (
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {uploadedImages.map((imageUrl, index) => (
-                      <div key={index} className="relative">
-                        <img
-                          src={imageUrl}
-                          alt={`Upload ${index + 1}`}
-                          className="w-20 h-20 object-cover rounded"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
             </>
           ) : null // Don't show anything if no damage type is selected
-        )}
-  
-        {/* Comments button - moved outside the conditional rendering */}
-        <button
-          onClick={() => {
-            if (!isCommentsVisible) {
-              setComments('');
-              setIsCommentsVisible(true);
-            } else {
-              setIsCommentsVisible(false);
-            }
-          }}
-          className="text-[#0FB8C1] underline mt-4 hover:text-[#0CA7AF]"
-        >
-          {isCommentsVisible ? '- Hide Comments' : '+ Add Comments'}
-        </button>
-        {isCommentsVisible && (
-          <textarea
-            value={comments}
-            onChange={(e) => setComments(e.target.value)}
-            className="w-full mt-4 p-4 border-2 border-gray-300 rounded-lg focus:border-[#0FB8C1] focus:ring-0"
-            rows={4}
-            placeholder="Add your comments here..."
-          />
         )}
       </div>
     )
   }
   
   const handleContinue = async () => {
-    console.log('handleContinue clicked');
-    console.log('Current state:', {
-      selectedWindows: Array.from(selectedWindows),
-      windowDamage,
-      chipSize,
-      selectedSpecifications: Array.from(selectedSpecifications),
-      glassType,
-      isAllQuestionsAnswered: isAllQuestionsAnswered()
-    });
-
     if (!isAllQuestionsAnswered()) {
       console.log('Not all questions are answered');
       return;
@@ -704,51 +614,43 @@ const generateAndUploadArgicCode = async (quoteId: string) => {
     setIsContinueLoading(true);
     
     try {
-      const quoteID = router.query.quoteID as string;
-      const base = new Airtable({ apiKey: process.env.NEXT_PUBLIC_AIRTABLE_API_KEY })
-        .base(process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID!);
+      const quoteID = router.query.quoteID as string || `QT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-      const submissionData = {
-        fields: {
-          'QuoteID': quoteID,
-          'Vehicle Registration': vehicleReg,
-          'Postcode': router.query.postcode as string,
-          'Submission Date': new Date().toISOString(),
-          'Selected Windows': Array.from(selectedWindows).join(', '),
-          'Window Damage': Array.from(selectedWindows).map(windowId => {
-            const windowLabel = regions.find(r => r.id === windowId)?.label;
-            const damageType = windowDamage[windowId];
-            const chipSizeInfo = damageType === 'Chipped' ? ` (${chipSize} greater than 5p)` : '';
-            return `${windowLabel}: ${damageType}${chipSizeInfo}`;
-          }).join(', '),
-          'Windscreen Specifications': Array.from(selectedSpecifications).join(', '),
-          'Comments': comments
-        }
-      };
+      // Save damage data to Supabase for magic link functionality
+      try {
+        await fetch('/api/save-damage-data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            quoteId: quoteID,
+            selectedWindows: Array.from(selectedWindows),
+            windowDamage: windowDamage,
+            specifications: Array.from(selectedSpecifications),
+            chipSize: chipSize || '',
+            comments,
+            glassColor,
+            uploadedImages
+          }),
+        });
+      } catch (saveError) {
+        console.error('Error saving damage data:', saveError);
+        // Continue even if save fails
+      }
 
-      const records = await base('Submissions').create([submissionData]);
-      const recordId = records[0].id;
-
-      // Navigate to contact info with all necessary details
+      // Navigate to contact info with minimal URL parameters for cleaner links
       await router.push({
         pathname: '/contact-info',
         query: {
-          vehicleReg,
-          quoteID: String(records[0].fields.QuoteID || ''),
-          recordId: recordId,
-          selectedWindows: JSON.stringify(Array.from(selectedWindows)),
-          windowDamage: JSON.stringify(windowDamage),
-          specifications: JSON.stringify(Array.from(selectedSpecifications)),
-          chipSize: chipSize || '',
-          comments
+          quoteID: quoteID,
+          ...(glassType && { glassType })
         }
       });
 
-      await generateAndUploadArgicCode(String(records[0].fields.QuoteID));
+      await generateAndUploadArgicCode(quoteID);
 
     } catch (error) {
       console.error('Error:', error);
-      setError('Failed to save damage information');
+      setError('Failed to navigate to contact information');
     } finally {
       setIsContinueLoading(false);
     }
@@ -761,7 +663,8 @@ const generateAndUploadArgicCode = async (quoteId: string) => {
     setIsLoading(true);
 
     try {
-      const file = files[0];
+      // Upload multiple files
+      const uploadPromises = Array.from(files).map(async (file) => {
       const formData = new FormData();
       formData.append('file', file);
 
@@ -771,48 +674,56 @@ const generateAndUploadArgicCode = async (quoteId: string) => {
       });
 
       if (!uploadResponse.ok) {
-        throw new Error('Failed to upload image');
+          throw new Error(`Failed to upload ${file.name}`);
       }
 
       const { url } = await uploadResponse.json();
-      console.log('Uploaded image URL:', url);
+        return url;
+      });
 
-      setUploadedImages((prev) => [...prev, url]);
+      const urls = await Promise.all(uploadPromises);
+      console.log('Uploaded image URLs:', urls);
 
-      // Airtable integration
-      const base = new Airtable({ apiKey: process.env.NEXT_PUBLIC_AIRTABLE_API_KEY })
-        .base(process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID!);
+      setUploadedImages((prev) => [...prev, ...urls]);
+      
+      // Save images to Supabase
+      const quoteID = router.query.quoteID as string;
+      if (quoteID && urls.length > 0) {
+        try {
+          const saveResponse = await fetch('/api/save-images', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              quoteId: quoteID,
+              imageUrls: urls
+            }),
+          });
 
-      const records = await base('Submissions')
-        .select({
-          filterByFormula: `{Vehicle Registration} = "${vehicleReg}"`,
-          maxRecords: 1,
-        })
-        .firstPage();
-
-      if (records.length === 0) {
-        throw new Error('No record found for the given vehicle registration');
+          if (!saveResponse.ok) {
+            console.error('Failed to save images to database');
+          } else {
+            console.log('Images saved to database successfully');
+          }
+        } catch (saveError) {
+          console.error('Error saving images to database:', saveError);
+        }
       }
-
-      // Update Airtable record with the uploaded file URL in the "Attachments" field
-      await base('Submissions').update([
-        {
-          id: records[0].id,
-          fields: {
-           'Attachments': url, 
-            'Comments': comments,
-          },
-        },
-      ]);
-
-      console.log('Successfully updated Airtable with image URL');
+      
+      // Update global image upload status
+      setGlobalImageUploadStatus('uploaded');
+      
+      console.log(`Successfully uploaded ${urls.length} images`);
     } catch (error: unknown) {
-      console.error('Error uploading image:', error);
+      console.error('Error uploading images:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      setError(`Error uploading image: ${errorMessage}`);
+      setError(`Error uploading images: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSkipImageUpload = () => {
+    setGlobalImageUploadStatus('skipped');
   };
 
   const handleMouseMove = (e: React.MouseEvent, label: string) => {
@@ -856,10 +767,16 @@ const generateAndUploadArgicCode = async (quoteId: string) => {
       return false;
     }
 
-    // Check if glass type is selected
-    if (!glassType) {
-      console.log('Glass type not selected');
-      return false;
+    // Check glass color for rear windows
+    const hasRearWindows = Array.from(selectedWindows).some(windowId => isRearWindow(windowId));
+    if (hasRearWindows) {
+      const allRearWindowsHaveColor = Array.from(selectedWindows)
+        .filter(windowId => isRearWindow(windowId))
+        .every(windowId => glassColor[windowId] !== undefined && glassColor[windowId] !== null);
+      if (!allRearWindowsHaveColor) {
+        console.log('Glass color needed for rear windows but not selected');
+        return false;
+      }
     }
 
     // If all checks pass, return true
@@ -873,87 +790,61 @@ const generateAndUploadArgicCode = async (quoteId: string) => {
       windowDamage,
       chipSize,
       selectedSpecifications: selectedSpecifications.size,
+      glassColor,
       isAnswered: isAllQuestionsAnswered()
     });
-  }, [selectedWindows, windowDamage, chipSize, selectedSpecifications]);
+  }, [selectedWindows, windowDamage, chipSize, selectedSpecifications, glassColor]);
+
+  // Handle hydration
+  useEffect(() => {
+    setIsMounted(true);
+    // Set initial window width after mount
+    if (typeof window !== 'undefined') {
+      setWindowWidth(window.innerWidth);
+    }
+  }, []);
 
   // Add useEffect for window resize handling
   useEffect(() => {
+    if (!isMounted) return;
+
     const handleResize = () => {
-      setWindowWidth(window.innerWidth);
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // Add useEffect to fetch existing damage data
-  useEffect(() => {
-    const fetchExistingDamage = async () => {
-      const { quoteID } = router.query;
-      if (!quoteID) return;
-      
-      try {
-        const base = new Airtable({ apiKey: process.env.NEXT_PUBLIC_AIRTABLE_API_KEY })
-          .base(process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID!);
-          
-        const records = await base('Submissions').select({
-          filterByFormula: `{QuoteID} = '${quoteID}'`
-        }).firstPage();
-        
-        if (records.length > 0) {
-          const record = records[0];
-          const selectedWindowsStr = record.fields['Selected Windows'] || '';
-          const windowDamageStr = record.fields['Window Damage'] || '';
-          const specificationsStr = record.fields['Windscreen Specifications'] || '';
-          
-          if (selectedWindowsStr) {
-            setSelectedWindows(new Set(String(selectedWindowsStr).split(', ')));
-          }
-          
-          if (windowDamageStr) {
-            const damageMap: { [key: string]: string } = {};
-            String(windowDamageStr).split(', ').forEach(damage => {
-              const [window, type] = damage.split(': ');
-              const windowId = regions.find(r => r.label === window)?.id;
-              if (windowId) {
-                damageMap[windowId] = type.replace(/ \(.*\)/, '');
-              }
-            });
-            setWindowDamage(damageMap);
-          }
-          
-          if (specificationsStr) {
-            setSelectedSpecifications(new Set(String(specificationsStr).split(', ')));
-          }
-          
-          setComments(String(record.fields['Comments'] || ''));
-        }
-      } catch (error) {
-        console.error('Error fetching damage data:', error);
+      if (typeof window !== 'undefined') {
+        setWindowWidth(window.innerWidth);
       }
     };
-    
-    fetchExistingDamage();
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, [isMounted]);
+
+  // Add useEffect to fetch existing damage data - removed since we're using Supabase now
+  useEffect(() => {
+    // This functionality has been moved to Supabase
+    // Any existing data would be handled through the contact-info API
   }, [router.query]);
 
   // Add this useEffect at the top of the component
   useEffect(() => {
-    const savedData = localStorage.getItem('damageLocationData');
-    if (savedData) {
-      const {
-        selectedWindows: savedWindows,
-        windowDamage: savedDamage,
-        specifications: savedSpecs,
-        chipSize: savedChipSize,
-        comments: savedComments
-      } = JSON.parse(savedData);
-      
-      setSelectedWindows(new Set(savedWindows));
-      setWindowDamage(savedDamage);
-      setSelectedSpecifications(new Set(savedSpecs));
-      setChipSize(savedChipSize);
-      setComments(savedComments);
+    if (typeof window !== 'undefined') {
+      const savedData = localStorage.getItem('damageLocationData');
+      if (savedData) {
+        const {
+          selectedWindows: savedWindows,
+          windowDamage: savedDamage,
+          specifications: savedSpecs,
+          chipSize: savedChipSize,
+          comments: savedComments
+        } = JSON.parse(savedData);
+        
+        setSelectedWindows(new Set(savedWindows));
+        setWindowDamage(savedDamage);
+        setSelectedSpecifications(new Set(savedSpecs));
+        setChipSize(savedChipSize);
+        setComments(savedComments);
+      }
     }
   }, []);
 
@@ -1293,6 +1184,113 @@ const generateAndUploadArgicCode = async (quoteId: string) => {
               {/* Damage options - better mobile spacing */}
               <div className="flex justify-center w-full mt-8 px-2 sm:px-4">
                 <div className="flex flex-col w-full max-w-2xl space-y-8">
+                  {/* Global Image Upload Section - Always show if windows are selected */}
+                  {selectedWindows.size > 0 && (
+                    <div className="w-full">
+                      <div className="mt-8 border-b border-gray-200 pb-8">
+                        <h3 className="text-2xl font-bold mb-4">Upload Images of Your Damage</h3>
+                        <div className="bg-blue-50 rounded-xl p-6 mb-6">
+                          <h4 className="text-xl font-semibold text-gray-800 mb-4">Help Us Provide an Accurate Quote</h4>
+                          <p className="text-gray-600 mb-6">
+                            Please upload images of your glass damage to help us provide a more accurate quote.
+                            You can upload multiple images to show different angles.
+                          </p>
+                          <div className="space-y-4">
+                            {globalImageUploadStatus === 'pending' ? (
+                              <>
+                                <input
+                                  type="file"
+                                  ref={fileInputRef}
+                                  onChange={handleImageUpload}
+                                  accept="image/*"
+                                  multiple
+                                  className="hidden"
+                                />
+                                <div className="flex flex-col sm:flex-row gap-4">
+                                  <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={isLoading}
+                                    className={`flex-1 px-6 py-4 rounded-lg bg-[#0FB8C1] text-white flex items-center justify-center hover:bg-[#0CA7AF] transition-colors ${
+                                      isLoading ? 'opacity-50 cursor-not-allowed' : ''
+                                    }`}
+                                  >
+                                    <Upload className="mr-2" size={20} />
+                                    {isLoading ? 'Uploading...' : uploadedImages.length > 0 ? 'Upload More Images' : 'Upload Images'}
+                                    {uploadedImages.length > 0 && !isLoading && (
+                                      <span className="ml-2">({uploadedImages.length} uploaded)</span>
+                                    )}
+                                  </button>
+                                  <button
+                                    onClick={handleSkipImageUpload}
+                                    className="flex-1 px-6 py-4 rounded-lg border-2 border-gray-300 text-gray-700 hover:border-gray-400 transition-colors"
+                                  >
+                                    I can't upload an image
+                                  </button>
+                                </div>
+                                {/* Image previews */}
+                                {uploadedImages.length > 0 && (
+                                  <div className="mt-4">
+                                    <p className="text-sm text-gray-600 mb-2">Uploaded images:</p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {uploadedImages.map((imageUrl, index) => (
+                                        <div key={index} className="relative">
+                                          <img
+                                            src={imageUrl}
+                                            alt={`Upload ${index + 1}`}
+                                            className="w-20 h-20 object-cover rounded-lg border border-gray-200"
+                                          />
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                {globalImageUploadStatus === 'uploaded' && uploadedImages.length > 0 ? (
+                                  <div>
+                                    <div className="flex items-center mb-2">
+                                      <span className="text-green-600 font-semibold mr-2">Images uploaded successfully!</span>
+                                      <span className="text-gray-500 text-sm">({uploadedImages.length} image{uploadedImages.length > 1 ? 's' : ''})</span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2 mt-2">
+                                      {uploadedImages.map((imageUrl, index) => (
+                                        <div key={index} className="relative">
+                                          <img
+                                            src={imageUrl}
+                                            alt={`Upload ${index + 1}`}
+                                            className="w-20 h-20 object-cover rounded-lg border border-gray-200"
+                                          />
+                                        </div>
+                                      ))}
+                                    </div>
+                                    <button
+                                      onClick={() => setGlobalImageUploadStatus('pending')}
+                                      className="mt-4 px-4 py-2 rounded-lg bg-[#0FB8C1] text-white hover:bg-[#0CA7AF] transition-colors"
+                                    >
+                                      Upload More Images
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-col items-start">
+                                    <span className="text-yellow-600 font-semibold mb-2">You chose not to upload images.</span>
+                                    <button
+                                      onClick={() => setGlobalImageUploadStatus('pending')}
+                                      className="mt-2 px-4 py-2 rounded-lg bg-[#0FB8C1] text-white hover:bg-[#0CA7AF] transition-colors"
+                                    >
+                                      Upload Images
+                                    </button>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Individual Damage Options for each selected window */}
                   {Array.from(selectedWindows).map(windowId => (
                     <div key={windowId} className="w-full">
                       {renderDamageOptions(windowId)}
@@ -1300,107 +1298,6 @@ const generateAndUploadArgicCode = async (quoteId: string) => {
                   ))}
                 </div>
               </div>
-
-              {/* Glass Type Preference */}
-              {isAllQuestionsAnswered() && (
-                <div className="mt-8 bg-gradient-to-br from-white to-gray-50 rounded-xl p-8 shadow-sm border border-gray-100">
-                  <div className="flex items-center mb-6 relative">
-                    <h3 className="text-xl font-bold text-gray-800">Glass Type Preference</h3>
-                    <div className="ml-2 text-sm text-gray-500"></div>
-                    <button
-                      onClick={() => setActiveTooltip(activeTooltip === 'glassType' ? null : 'glassType')}
-                      className="ml-2 text-gray-400 hover:text-gray-600 focus:outline-none"
-                    >
-                      <Info size={20} />
-                    </button>
-                    
-                    {/* Updated Tooltip/Popup */}
-                    {activeTooltip === 'glassType' && (
-                      <div className={getTooltipPosition(windowWidth)}>
-                        <div className="flex justify-between items-start mb-3">
-                          <h4 className="font-bold text-lg">Glass Type Comparison</h4>
-                          <button
-                            onClick={() => setActiveTooltip(null)}
-                            className="text-gray-400 hover:text-gray-600"
-                          >
-                            <X size={20} />
-                          </button>
-                        </div>
-                        <div className="space-y-3">
-                          <div className="border-b border-gray-100 pb-2">
-                            <p className="font-semibold text-sm">OEM Glass</p>
-                            <p className="text-sm text-gray-600">Original manufacturer glass, identical to what came with your vehicle. Generally more expensive but ensures perfect fit and quality.</p>
-                          </div>
-                          <div className="border-b border-gray-100 pb-2">
-                            <p className="font-semibold text-sm">OEE Glass</p>
-                            <p className="text-sm text-gray-600">Manufactured to the same standards but by alternative suppliers. Usually 20-30% cheaper while maintaining high quality and safety standards.</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="flex flex-col gap-4">
-                    {/* OEE Option - Now First */}
-                    <button
-                      onClick={() => setGlassType('OEE')}
-                      className={`
-                        group px-6 py-5 rounded-xl border-2 transition-all flex items-center justify-between
-                        hover:shadow-md hover:scale-[1.01] transform duration-200
-                        ${glassType === 'OEE' 
-                          ? 'border-[#0FB8C1] bg-[#F7FDFD] text-[#0FB8C1]' 
-                          : 'border-gray-200 hover:border-gray-300 bg-white text-gray-700'}
-                      `}
-                    >
-                      <div className="flex items-center">
-                        <div className="mr-4">
-                          <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors
-                            ${glassType === 'OEE' ? 'border-[#0FB8C1]' : 'border-gray-300 group-hover:border-gray-400'}`}
-                          >
-                            {glassType === 'OEE' && <div className="w-3 h-3 rounded-full bg-[#0FB8C1]" />}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="font-semibold text-lg">OEE Glass <span className="text-sm text-green-600 ml-2">Insurance Approved</span></div>
-                          <div className="text-sm text-gray-500 mt-1">Original Equipment Equivalent - Same quality from alternative manufacturers</div>
-                        </div>
-                      </div>
-                      {glassType === 'OEE' && (
-                        <span className="text-sm font-medium text-[#0FB8C1] ml-4">Selected</span>
-                      )}
-                    </button>
-
-                    {/* OEM Option - Now Second */}
-                    <button
-                      onClick={() => setGlassType('OEM')}
-                      className={`
-                        group px-6 py-5 rounded-xl border-2 transition-all flex items-center justify-between
-                        hover:shadow-md hover:scale-[1.01] transform duration-200
-                        ${glassType === 'OEM' 
-                          ? 'border-[#0FB8C1] bg-[#F7FDFD] text-[#0FB8C1]' 
-                          : 'border-gray-200 hover:border-gray-300 bg-white text-gray-700'}
-                      `}
-                    >
-                      <div className="flex items-center">
-                        <div className="mr-4">
-                          <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors
-                            ${glassType === 'OEM' ? 'border-[#0FB8C1]' : 'border-gray-300 group-hover:border-gray-400'}`}
-                          >
-                            {glassType === 'OEM' && <div className="w-3 h-3 rounded-full bg-[#0FB8C1]" />}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="font-semibold text-lg">OEM Glass</div>
-                          <div className="text-sm text-gray-500 mt-1">Original Equipment Manufacturer - Identical to what came with your vehicle</div>
-                        </div>
-                      </div>
-                      {glassType === 'OEM' && (
-                        <span className="text-sm font-medium text-[#0FB8C1] ml-4">Selected</span>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              )}
 
               {/* Continue button */}
               {selectedWindows.size > 0 && (
@@ -1483,12 +1380,32 @@ const generateAndUploadArgicCode = async (quoteId: string) => {
                                 </div>
                               </div>
                             )}
+                            {isRearWindow(windowId) && glassColor[windowId] && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-500 text-sm font-medium">Color:</span>
+                                <span className="text-sm bg-white border border-gray-200 px-3 py-1 rounded-full">
+                                  {glassColor[windowId]}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
                     ))
                   ) : (
                     <div className="text-sm text-gray-500 italic">No glass selected</div>
+                  )}
+                  
+                  {/* Glass Type Section */}
+                  {glassType && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500 text-sm font-medium">Glass Type:</span>
+                        <span className="text-sm bg-green-50 border border-green-200 px-3 py-1 rounded-full text-green-800 font-medium">
+                          {glassType} Glass
+                        </span>
+                      </div>
+                    </div>
                   )}
                 </div>
 
@@ -1531,6 +1448,32 @@ const generateAndUploadArgicCode = async (quoteId: string) => {
                         {vehicleDetails?.colour}
                       </span>
                     </div>
+                  </div>
+
+                  {/* Comments section */}
+                  <div className="mt-4">
+                    <button
+                      onClick={() => {
+                        if (!isCommentsVisible) {
+                          setComments('');
+                          setIsCommentsVisible(true);
+                        } else {
+                          setIsCommentsVisible(false);
+                        }
+                      }}
+                      className="text-[#0FB8C1] underline hover:text-[#0CA7AF] text-sm font-medium"
+                    >
+                      {isCommentsVisible ? '- Hide Comments' : '+ Add Comments'}
+                    </button>
+                    {isCommentsVisible && (
+                      <textarea
+                        value={comments}
+                        onChange={(e) => setComments(e.target.value)}
+                        className="w-full mt-3 p-3 border-2 border-gray-300 rounded-lg focus:border-[#0FB8C1] focus:ring-0 text-sm"
+                        rows={3}
+                        placeholder="Add your comments here..."
+                      />
+                    )}
                   </div>
                 </div>
               </div>

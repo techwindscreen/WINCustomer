@@ -1,7 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import Airtable from 'airtable'
-
-const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(process.env.AIRTABLE_BASE_ID!)
+import { supabase } from '../../lib/supabaseClient'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -11,20 +9,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const { vehicleReg, manufacturer, model, year, colour, type, style, doorPlan } = req.body
 
-    const record = await base('Vehicle Submissions').create({
-      vehicleReg,
-      manufacturer,
-      model,
-      year,
-      colour,
-      type,
-      style,
-      doorPlan,
-    })
+    const { data, error } = await supabase
+      .from('vehicle_submissions')
+      .insert([{
+        vehicle_reg: vehicleReg,
+        manufacturer,
+        model,
+        year,
+        colour,
+        type,
+        style,
+        door_plan: doorPlan,
+      }])
+      .select()
+      .single()
 
-    res.status(200).json({ message: 'Data submitted successfully', id: record.id })
+    if (error) {
+      throw error
+    }
+
+    res.status(200).json({ message: 'Data submitted successfully', id: data.id })
   } catch (error) {
-    console.error('Error submitting to Airtable:', error)
+    console.error('Error submitting to Supabase:', error)
     res.status(500).json({ message: 'Error submitting data' })
   }
 }
