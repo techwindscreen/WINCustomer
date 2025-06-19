@@ -122,7 +122,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 glassType: glassType || 'OEE', // Use actual glass type or default to OEE
                 quotePrice: quotePrice || result.quote_price || 0,
                 quoteId: quoteId,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                // Additional data for enhanced admin notification
+                appointmentDate: formData.date,
+                appointmentTime: formData.timeSlot,
+                paymentOption: standardizedPaymentOption,
+                vehicleMake: result.vehicle_make || existingRecord?.vehicle_make,
+                vehicleModel: result.vehicle_model || existingRecord?.vehicle_model,
+                vehicleYear: result.vehicle_year || existingRecord?.vehicle_year
             });
         } catch (klaviyoError) {
             console.error('Klaviyo tracking error:', klaviyoError);

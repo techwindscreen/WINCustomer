@@ -18,6 +18,13 @@ interface QuoteCompletedData {
   quotePrice: number;
   quoteId: string;
   timestamp: string;
+  // Additional fields for enhanced admin notification
+  appointmentDate?: string;
+  appointmentTime?: string;
+  paymentOption?: string;
+  vehicleMake?: string;
+  vehicleModel?: string;
+  vehicleYear?: string;
 }
 
 export class KlaviyoService {
@@ -91,18 +98,48 @@ export class KlaviyoService {
     try {
       console.log('📧 Sending admin notification for quote completed');
       
-      // Only send admin notification - no customer tracking metrics
-      await KlaviyoService.sendAdminNotification({
-        vehicle_registration: data.vehicleReg,
+      // Use the new sendAdminOrderNotification with enhanced data instead of basic sendAdminNotification
+      await KlaviyoService.sendAdminOrderNotification({
+        // Order information
         quote_id: data.quoteId,
+        order_date: data.timestamp,
+        
+        // Customer information  
         user_name: data.userName,
         user_email: data.userEmail,
         user_phone: data.userPhone,
         user_location: data.userLocation || 'Not provided',
-        quote_price: data.quotePrice,
+        
+        // Vehicle information
+        vehicle_registration: data.vehicleReg,
+        // Note: Make/model/year not available in quote data, would need to be fetched
+        vehicle_make: data.vehicleMake || 'To be confirmed',
+        vehicle_model: data.vehicleModel || 'To be confirmed', 
+        vehicle_year: data.vehicleYear || 'To be confirmed',
+        
+        // Service details
         glass_type: data.glassType,
-        selected_windows: data.selectedWindows.join(', '),
-        timestamp: data.timestamp
+        damage_type: data.selectedWindows.join(', '),
+        special_requirements: data.specifications.join(', ') || 'None',
+        
+        // Pricing information
+        total_price: data.quotePrice ? new Intl.NumberFormat('en-GB', {
+          style: 'currency',
+          currency: 'GBP'
+        }).format(data.quotePrice) : 'Quote pending',
+        
+        // These will be filled in when payment is processed
+        glass_price: 'TBD at payment',
+        fitting_price: 'TBD at payment',
+        vat_amount: 'TBD at payment',
+        payment_method: 'Not yet paid',
+        payment_type: 'Not yet paid',
+        payment_status: 'QUOTE_COMPLETED',
+        
+        // Appointment details from contact form
+        preferred_date: data.appointmentDate || 'TBD', 
+        preferred_time: data.appointmentTime || 'TBD',
+        appointment_type: 'mobile'
       });
 
       console.log('✅ Klaviyo: Admin notification sent');
@@ -191,6 +228,122 @@ export class KlaviyoService {
       console.log('✅ Klaviyo: Admin notification sent');
     } catch (error) {
       console.error('❌ Klaviyo: Failed to send admin notification:', error);
+    }
+  }
+
+  // Send admin order notification email for completed orders with payment
+  static async sendAdminOrderNotification(data: any) {
+    try {
+      console.log('📧 Sending admin ORDER notification with data:', {
+        preferred_date: data.preferred_date || data.appointment_date,
+        preferred_time: data.preferred_time || data.appointment_time,
+        vehicle_make: data.vehicle_make,
+        vehicle_model: data.vehicle_model,
+        glass_price: data.glass_price || data.materials_cost,
+        fitting_price: data.fitting_price || data.labor_cost,
+        payment_method: data.payment_method,
+        payment_type: data.payment_type
+      });
+      
+      const adminEmail = process.env.ADMIN_EMAIL || 'admin@windscreencompare.com';
+      
+      // Generate unique event ID to prevent email chaining for admin notifications
+      const uniqueEventId = `admin_order_notification_${data.quote_id || data.order_id}_${Date.now()}`;
+      
+      const payload = {
+        data: {
+          type: 'event',
+          attributes: {
+            properties: {
+              // Order Information
+              order_id: data.order_id || data.quote_id,
+              quote_id: data.quote_id,
+              order_date: data.order_date || new Date().toISOString(),
+              booking_reference: data.booking_reference,
+              
+              // Preferred Appointment (these were missing!)
+              preferred_date: data.preferred_date || data.appointment_date,
+              preferred_time: data.preferred_time || data.appointment_time,
+              appointment_type: data.appointment_type,
+              
+              // Customer Information
+              user_name: data.user_name || data.customer_name,
+              user_email: data.user_email || data.customer_email,
+              user_phone: data.user_phone || data.customer_phone,
+              user_location: data.user_location || data.customer_address,
+              
+              // Vehicle Information (these were missing!)
+              vehicle_registration: data.vehicle_registration,
+              vehicle_make: data.vehicle_make,
+              vehicle_model: data.vehicle_model,
+              vehicle_year: data.vehicle_year,
+              
+              // Service Details
+              glass_type: data.glass_type,
+              damage_type: data.damage_type || data.selected_windows,
+              special_requirements: data.special_requirements || 'None',
+              
+              // Payment Information (these were missing!)
+              glass_price: data.glass_price || data.materials_cost,
+              fitting_price: data.fitting_price || data.labor_cost,
+              vat_amount: data.vat_amount,
+              total_price: data.total_price || data.total_amount,
+              payment_status: data.payment_status || 'COMPLETED',
+              payment_method: data.payment_method,
+              payment_type: data.payment_type,
+              stripe_payment_id: data.stripe_payment_id || data.payment_intent_id,
+              
+              // Admin notification specific properties
+              notification_type: 'admin_alert',
+              priority: 'high',
+              alert_type: 'order_completed',
+              dashboard_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/admin/orders`,
+              formatted_timestamp: new Date().toLocaleString('en-GB', {
+                day: '2-digit',
+                month: '2-digit', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              }),
+              notification_title: 'Order Completed',
+              action_required: 'Assign technician and confirm appointment',
+              source: 'windscreen-compare-website',
+              
+              // Add unique identifiers to prevent email chaining
+              unique_event_id: uniqueEventId,
+              timestamp_ms: Date.now(),
+              event_uuid: `admin-order-${data.quote_id || data.order_id}-${Date.now()}`
+            },
+            metric: {
+              data: {
+                type: 'metric',
+                attributes: {
+                  name: 'Admin: Quote Completed'
+                }
+              }
+            },
+            profile: {
+              data: {
+                type: 'profile',
+                attributes: {
+                  email: adminEmail,
+                  properties: {
+                    role: 'admin'
+                  }
+                }
+              }
+            },
+            time: new Date().toISOString(),
+            // Add unique external ID to prevent event deduplication
+            unique_id: uniqueEventId
+          }
+        }
+      };
+
+      await KlaviyoService.makeAPICall('/events/', payload);
+      console.log('✅ Klaviyo: Admin order notification sent');
+    } catch (error) {
+      console.error('❌ Klaviyo: Failed to send admin order notification:', error);
     }
   }
 

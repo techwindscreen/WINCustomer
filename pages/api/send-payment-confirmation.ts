@@ -74,6 +74,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let vatAmount = paymentData.vatAmount;
 
     // If pricing breakdown is not provided, calculate estimated values
+    // NOTE: This may cause pricing discrepancies with the website quote
+    // Consider fetching actual pricing breakdown from quote data instead
     if (!materialsCost && !laborCost && !vatAmount) {
       // VAT is 20% in UK
       const totalWithoutVat = Math.round(paymentData.totalAmount / 1.2);
@@ -87,7 +89,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         original_total: paymentData.totalAmount,
         estimated_materials: materialsCost,
         estimated_labor: laborCost,
-        estimated_vat: vatAmount
+        estimated_vat: vatAmount,
+        warning: 'Using estimated breakdown - may not match website pricing'
       });
     }
 
@@ -194,6 +197,47 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ].join('\n'),
       technician_contact_time: '1 hour before appointment',
       guarantee_period: '12 months'
+    });
+
+    // Send Admin Order Notification (NEW!)
+    await KlaviyoService.sendAdminOrderNotification({
+      // Order information  
+      order_id: paymentData.quoteId,
+      quote_id: paymentData.quoteId,
+      order_date: new Date().toISOString(),
+      booking_reference: bookingReference,
+      
+      // Appointment details (these were missing!)
+      preferred_date: appointmentDate,
+      preferred_time: appointmentTime,
+      appointment_type: paymentData.appointmentType || 'mobile',
+      
+      // Customer information
+      user_name: paymentData.customerName,
+      user_email: paymentData.customerEmail,  
+      user_phone: paymentData.customerPhone,
+      user_location: paymentData.customerAddress || 'Not provided',
+      
+      // Vehicle information (these were missing!)
+      vehicle_registration: paymentData.vehicleReg,
+      vehicle_make: paymentData.vehicleMake || 'Unknown',
+      vehicle_model: paymentData.vehicleModel || 'Unknown', 
+      vehicle_year: paymentData.vehicleYear || 'Unknown',
+      
+      // Service details
+      glass_type: paymentData.glassType,
+      damage_type: paymentData.selectedWindows.join(', '),
+      special_requirements: 'None',
+      
+      // Payment information (these were missing!)
+      glass_price: materialsCost ? formatPrice(materialsCost) : 'N/A',
+      fitting_price: laborCost ? formatPrice(laborCost) : 'N/A', 
+      vat_amount: vatAmount ? formatPrice(vatAmount) : 'N/A',
+      total_price: formatPrice(paymentData.totalAmount),
+      payment_status: 'COMPLETED',
+      payment_method: paymentData.paymentMethod || 'card',
+      payment_type: paymentData.paymentType,
+      stripe_payment_id: paymentData.paymentIntentId
     });
 
     console.log('✅ Payment confirmation emails sent successfully');

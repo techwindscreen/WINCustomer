@@ -1,0 +1,209 @@
+<html>  
+  <body>    
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f9f9f9; padding: 20px;">      
+      <!-- Header -->
+      <div style="background-color: white; color: #333; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; border-bottom: 2px solid #0FB8C1;">        
+        <img alt="WindscreenCompare Logo" src="https://d3k81ch9hvuctc.cloudfront.net/company/XjdccL/images/5ca10ab9-79c7-4755-af6e-07ffff417b0a.png" style="max-width: 200px; height: auto; margin-bottom: 10px;"/>
+        <h1 style="margin: 0; font-size: 24px; color: #0FB8C1;">
+          WindscreenCompare Admin
+        </h1>
+        <p style="margin: 5px 0 0 0; font-size: 16px; color: #666;">
+          New Order Completed - Action Required
+        </p>
+      </div>
+
+      <!-- Content -->
+      <div style="background-color: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">        
+        <!-- Notification Message -->
+        <h2 style="color: #0FB8C1; margin-top: 0; font-size: 20px; margin-bottom: 20px;">
+          🔔 New Order Alert!
+        </h2>
+        <p style="color: #333; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+          A new windscreen replacement order has been completed and requires your attention. Please review the details below and take necessary action.
+        </p>
+
+        <!-- Order Details -->
+        <div style="background-color: #e8f8f9; padding: 20px; border-radius: 6px; margin-bottom: 25px; border: 2px solid #0FB8C1;">          
+          <h3 style="color: #0FB8C1; margin-top: 0; font-size: 18px; margin-bottom: 15px;">
+            📋 Order Information
+          </h3>
+          <div style="font-size: 16px; line-height: 1.8;">            
+            <p style="margin: 0 0 10px 0;">              
+              <strong style="color: #333;">Order ID:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.order_id|default:event.quote_id}}</span>
+            </p>
+            <p style="margin: 0 0 10px 0;">              
+              <strong style="color: #333;">Order Date:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.order_date|default:event.formatted_timestamp}}</span>
+            </p>
+            <p style="margin: 0 0 10px 0;">              
+              <strong style="color: #333;">Preferred Appointment:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.preferred_date}} at {{event.preferred_time}}</span>
+            </p>
+            <p style="margin: 0;">              
+              <strong style="color: #333;">Service Type:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.appointment_type|default:"Mobile"|title}} Service</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- Customer Details -->
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 25px;">          
+          <h3 style="color: #0FB8C1; margin-top: 0; font-size: 18px; margin-bottom: 15px;">
+            👤 Customer Information
+          </h3>
+          <div style="font-size: 16px; line-height: 1.8;">            
+            <p style="margin: 0 0 10px 0;">              
+              <strong style="color: #333;">Name:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.user_name}}</span>
+            </p>
+            <p style="margin: 0 0 10px 0;">              
+              <strong style="color: #333;">Email:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.user_email}}</span>
+            </p>
+            <p style="margin: 0 0 10px 0;">              
+              <strong style="color: #333;">Phone:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.user_phone}}</span>
+            </p>
+            <p style="margin: 0;">              
+              <strong style="color: #333;">Address:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.user_location}}</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- Vehicle & Service Details -->
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 25px;">          
+          <h3 style="color: #0FB8C1; margin-top: 0; font-size: 18px; margin-bottom: 15px;">
+            🚗 Vehicle & Service Details
+          </h3>
+          <div style="font-size: 16px; line-height: 1.8;">            
+            <p style="margin: 0 0 10px 0;">              
+              <strong style="color: #333;">Registration:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.vehicle_registration}}</span>
+            </p>
+            <p style="margin: 0 0 10px 0;">              
+              <strong style="color: #333;">Vehicle:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.vehicle_make}} {{event.vehicle_model}} ({{event.vehicle_year}})</span>
+            </p>
+            <p style="margin: 0 0 10px 0;">              
+              <strong style="color: #333;">Glass Type:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.glass_type}}</span>
+            </p>
+            <p style="margin: 0 0 10px 0;">              
+              <strong style="color: #333;">Damage Type:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.damage_type}}</span>
+            </p>
+            <p style="margin: 0;">              
+              <strong style="color: #333;">Special Requirements:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.special_requirements|default:"None"}}</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- Payment & Pricing -->
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 25px;">          
+          <h3 style="color: #0FB8C1; margin-top: 0; font-size: 18px; margin-bottom: 15px;">
+            💰 Payment Information
+          </h3>
+          <div style="font-size: 14px; line-height: 1.6;">            
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">              
+              <span style="color: #333;">Glass Cost:</span>
+              <span style="color: #333; font-weight: 600;">{{event.glass_price}}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">              
+              <span style="color: #333;">Fitting Cost:</span>
+              <span style="color: #333; font-weight: 600;">{{event.fitting_price}}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">              
+              <span style="color: #333;">VAT (20%):</span>
+              <span style="color: #333; font-weight: 600;">{{event.vat_amount}}</span>
+            </div>
+            <hr style="border: none; border-top: 1px solid #dee2e6; margin: 15px 0;"/>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">              
+              <span style="color: #0FB8C1; font-weight: bold; font-size: 16px;">Total:</span>
+              <span style="color: #0FB8C1; font-weight: bold; font-size: 16px;">{{event.total_price}}</span>
+            </div>
+            <div style="font-size: 16px; line-height: 1.8;">              
+              <p style="margin: 0 0 10px 0;">                
+                <strong style="color: #333;">Payment Status:</strong> 
+                <span style="color: #28a745; font-weight: 600;">{{event.payment_status|default:"COMPLETED"}}</span>
+              </p>
+              <p style="margin: 0 0 10px 0;">                
+                <strong style="color: #333;">Payment Method:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.payment_method|title}}</span>
+              </p>
+              <p style="margin: 0 0 10px 0;">                
+                <strong style="color: #333;">Payment Type:</strong> 
+                <span style="color: #0FB8C1; font-weight: 600;">
+                  {% if event.payment_type == 'pay_in_full' %}
+                    Paid in Full
+                  {% elif event.payment_type == 'pay_deposit' %}
+                    Deposit Paid
+                  {% else %}
+                    {{event.payment_type|title}}
+                  {% endif %}
+                </span>
+              </p>
+              {% if event.stripe_payment_id %}
+              <p style="margin: 0;">                
+                <strong style="color: #333;">Stripe Payment ID:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.stripe_payment_id}}</span>
+              </p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Technician Assignment -->
+        <div style="background-color: #fff3cd; padding: 20px; border-radius: 6px; margin-bottom: 25px; border-left: 4px solid #ffc107;">          
+          <h3 style="color: #856404; margin-top: 0; font-size: 16px; margin-bottom: 15px;">
+            🔧 Technician Assignment Required
+          </h3>
+          <ul style="color: #856404; font-size: 14px; line-height: 1.6; margin: 0; padding-left: 20px;">            
+            <li>Assign a qualified technician for {{event.preferred_date}} at {{event.preferred_time}}</li>
+            <li>Confirm technician availability and contact details</li>
+            <li>Send appointment confirmation to customer</li>
+            <li>Update CRM with technician details</li>
+            <li>Schedule pre-appointment reminder calls</li>
+          </ul>
+        </div>
+
+        <!-- Admin Action Items -->
+        <div style="background-color: #e8f8f9; padding: 20px; border-radius: 6px; margin-bottom: 25px; border-left: 4px solid #0FB8C1;">          
+          <h3 style="color: #0FB8C1; margin-top: 0; font-size: 16px; margin-bottom: 10px;">
+            ✅ Action Items
+          </h3>
+          <ul style="color: #333; font-size: 14px; line-height: 1.6; margin: 0; padding-left: 20px;">            
+            <li>Review order details and verify payment completion</li>
+            <li>Assign appropriate technician based on location and availability</li>
+            <li>Order glass and materials if not in stock</li>
+            <li>Send technician contact details to customer</li>
+            <li>Schedule follow-up calls and reminders</li>
+            <li>Update order status in CRM system</li>
+          </ul>
+        </div>
+
+        <!-- CRM Access -->
+        <div style="background-color: #0FB8C1; padding: 20px; border-radius: 6px; margin-bottom: 25px; text-align: center;">          
+          <h3 style="color: white; margin-top: 0; font-size: 18px; margin-bottom: 15px;">
+            🔗 Manage This Order
+          </h3>
+          <a href="{{event.crm_link|default:'https://your-crm-system.com/orders/'}}{{event.order_id|default:event.quote_id}}" 
+             style="display: inline-block; background-color: white; color: #0FB8C1; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; border: 2px solid white;">
+            View Order in CRM →
+          </a>
+          <p style="color: white; font-size: 14px; margin: 15px 0 0 0;">
+            Access full order details, assign technicians, and manage customer communications
+          </p>
+        </div>
+
+        <!-- Contact Information -->
+        <div style="text-align: center; margin-top: 25px;">          
+          <p style="color: #666; font-size: 14px; margin: 0 0 10px 0;">
+            System generated notification | Do not reply to this email
+          </p>
+          <p style="color: #666; font-size: 14px; margin: 0;">
+            For technical support: 
+            <a href="mailto:tech@windscreencompare.com" style="color: #0FB8C1; text-decoration: none;">tech@windscreencompare.com</a>
+          </p>
+        </div>
+
+        <!-- Footer Info -->
+        <div style="text-align: center; margin-top: 25px; padding-top: 20px; border-top: 1px solid #eee;">          
+          <p style="color: #666; font-size: 14px; margin: 0 0 15px 0;">
+            Order ID: {{event.order_id|default:event.quote_id}} | Generated: {{event.formatted_timestamp}}
+          </p>
+          <p style="color: #999; font-size: 12px; margin: 0;">
+            WindscreenCompare Admin Portal | Internal Use Only
+          </p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html> 
