@@ -179,25 +179,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     // Send Receipt Email
-    await KlaviyoService.sendPaymentReceipt({
-      ...baseEventData,
-      event_type: 'payment_receipt'
-    });
+    console.log('📧 Sending payment receipt email to:', paymentData.customerEmail);
+    try {
+      await KlaviyoService.sendPaymentReceipt({
+        ...baseEventData,
+        event_type: 'payment_receipt'
+      });
+      console.log('✅ Payment receipt email sent successfully');
+    } catch (receiptError) {
+      console.error('❌ Failed to send payment receipt:', receiptError);
+      // Continue anyway - don't let one email failure stop the others
+    }
 
     // Send Order Confirmation Email (with appointment details)
-    await KlaviyoService.sendOrderConfirmation({
-      ...baseEventData,
-      event_type: 'order_confirmation',
-      // Additional service-specific details
-      service_duration: '1-2 hours',
-      preparation_instructions: [
-        'Ensure vehicle is accessible',
-        'Clean around windscreen area',
-        'Remove personal items from dashboard'
-      ].join('\n'),
-      technician_contact_time: '1 hour before appointment',
-      guarantee_period: '12 months'
-    });
+    console.log('📧 Sending order confirmation email to:', paymentData.customerEmail);
+    try {
+      await KlaviyoService.sendOrderConfirmation({
+        ...baseEventData,
+        event_type: 'order_confirmation',
+        // Additional service-specific details
+        service_duration: '1-2 hours',
+        preparation_instructions: [
+          'Ensure vehicle is accessible',
+          'Clean around windscreen area',
+          'Remove personal items from dashboard'
+        ].join('\n'),
+        technician_contact_time: '1 hour before appointment',
+        guarantee_period: '12 months'
+      });
+      console.log('✅ Order confirmation email sent successfully');
+    } catch (confirmationError) {
+      console.error('❌ Failed to send order confirmation:', confirmationError);
+      // Continue anyway - don't let one email failure stop the others
+    }
 
     // Send Admin Order Notification (NEW!)
     await KlaviyoService.sendAdminOrderNotification({

@@ -298,6 +298,7 @@ export class KlaviyoService {
               priority: 'high',
               alert_type: 'order_completed',
               dashboard_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/admin/orders`,
+              crm_base_url: process.env.CRM_BASE_URL || 'https://your-crm-system.com',
               formatted_timestamp: new Date().toLocaleString('en-GB', {
                 day: '2-digit',
                 month: '2-digit', 

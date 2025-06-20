@@ -174,7 +174,7 @@
           <h3 style="color: white; margin-top: 0; font-size: 18px; margin-bottom: 15px;">
             🔗 Manage This Order
           </h3>
-          <a href="{{event.crm_link|default:'https://your-crm-system.com/orders/'}}{{event.order_id|default:event.quote_id}}" 
+          <a href="{{event.crm_base_url}}/quotes?quote_id={{event.quote_id}}" 
              style="display: inline-block; background-color: white; color: #0FB8C1; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; border: 2px solid white;">
             View Order in CRM →
           </a>

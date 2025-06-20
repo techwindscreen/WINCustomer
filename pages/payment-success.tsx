@@ -297,7 +297,7 @@ const PaymentSuccessPage: React.FC = () => {
         if (finalQuoteId) {
           try {
             // Try to send basic payment confirmation with minimal data
-                         const fallbackEmailData = {
+            const fallbackEmailData = {
                customerName: 'Valued Customer',
                customerEmail: stripeCustomerEmail || 'no-email@windscreencompare.com', // From payment metadata
               customerPhone: '',
@@ -316,24 +316,30 @@ const PaymentSuccessPage: React.FC = () => {
                              Math.round(actualTotalAmount * 0.05) : undefined
             };
 
-                         console.log('📧 Attempting fallback email send...');
-             console.log('⚠️ Note: Using fallback data - customer email from metadata:', stripeCustomerEmail);
+            console.log('📧 Attempting fallback email send...');
+            console.log('⚠️ Note: Using fallback data - customer email from metadata:', stripeCustomerEmail);
+            console.log('🔍 Payment metadata debug:', {
+              stripeCustomerEmail,
+              hasValidEmail: !!(stripeCustomerEmail && stripeCustomerEmail !== 'no-email@windscreencompare.com'),
+              emailLength: stripeCustomerEmail?.length,
+              emailContainsAt: stripeCustomerEmail?.includes('@')
+            });
              
-             // Only send email if we have a valid customer email
-             if (stripeCustomerEmail && stripeCustomerEmail !== 'no-email@windscreencompare.com') {
-               const emailResponse = await fetch('/api/send-payment-confirmation', {
-                 method: 'POST',
-                 headers: { 'Content-Type': 'application/json' },
-                 body: JSON.stringify(fallbackEmailData)
-               });
-               
-               if (emailResponse.ok) {
-                 console.log('✅ Fallback payment confirmation emails sent successfully');
-               } else {
-                 console.warn('⚠️ Failed to send fallback payment confirmation emails');
-               }
+             // ALWAYS try to send email, even with placeholder email for debugging
+             const emailResponse = await fetch('/api/send-payment-confirmation', {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify(fallbackEmailData)
+             });
+             
+             if (emailResponse.ok) {
+               console.log('✅ Fallback payment confirmation emails sent successfully');
+               const emailResult = await emailResponse.json();
+               console.log('📧 Email response:', emailResult);
              } else {
-               console.warn('⚠️ No valid customer email found in payment metadata - cannot send fallback email');
+               console.warn('⚠️ Failed to send fallback payment confirmation emails');
+               const errorText = await emailResponse.text();
+               console.error('❌ Email error response:', errorText);
              }
             
           } catch (fallbackError) {
