@@ -841,7 +841,7 @@ const QuotePage: React.FC = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-white to-gray-50">
-      {/* Enhanced Header */}
+      {/* Header with Logo */}
       <header className="bg-white py-4 px-4 border-b shadow-sm">
         <div className="container mx-auto">
           <div className="flex items-center justify-between">
@@ -866,20 +866,6 @@ const QuotePage: React.FC = () => {
           </div>
         </div>
       </header>
-
-      {/* Enhanced Navigation */}
-      <nav className="bg-[#0FB8C1] text-white shadow-lg relative z-10">
-        <div className="container mx-auto px-4">
-          <ul className="flex overflow-x-auto whitespace-nowrap md:justify-between py-3 text-sm scrollbar-hide">
-            <li className="px-4"><Link href="/" className="hover:text-white/80 transition">HOME</Link></li>
-            <li className="px-4"><Link href="#" className="hover:text-white/80 transition">HOW IT WORKS</Link></li>
-            <li className="px-4"><Link href="#" className="hover:text-white/80 transition">FREE QUOTE</Link></li>
-            <li className="px-4"><Link href="#" className="hover:text-white/80 transition">SERVICES</Link></li>
-            <li className="px-4"><Link href="#" className="hover:text-white/80 transition">FAQ'S</Link></li>
-            <li className="px-4"><Link href="#" className="hover:text-white/80 transition">CONTACT</Link></li>
-          </ul>
-        </div>
-      </nav>
 
       {/* Main Content */}
       <main className="flex-grow">

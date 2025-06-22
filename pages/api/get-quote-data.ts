@@ -1,26 +1,37 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabase } from '../../lib/supabaseClient';
+import { sanitizeQuoteId } from '../../lib/inputValidation';
+import { normalRateLimit } from '../../lib/rateLimiter';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') {
         return res.status(405).json({ message: 'Method not allowed' });
     }
 
+    // Apply rate limiting
+    const rateLimitResult = normalRateLimit(req, res);
+    if (rateLimitResult !== true) {
+        return; // Rate limit response already sent
+    }
+
     try {
         const { quoteId } = req.query;
-        console.log('Fetching quote data for ID:', quoteId);
 
         if (!quoteId || typeof quoteId !== 'string') {
-            console.log('Invalid quoteId provided:', quoteId);
             return res.status(400).json({ message: 'Quote ID is required' });
         }
 
+        // Sanitize the quote ID
+        const sanitizedQuoteId = sanitizeQuoteId(quoteId);
+        if (!sanitizedQuoteId) {
+            return res.status(400).json({ message: 'Invalid Quote ID format' });
+        }
+
         // Fetch complete quote data from Supabase
-        // First, let's try a basic query to see what exists
         const { data, error } = await supabase
             .from('MasterCustomer')
             .select('*')
-            .eq('quote_id', quoteId)
+            .eq('quote_id', sanitizedQuoteId)
             .single();
 
         if (error) {

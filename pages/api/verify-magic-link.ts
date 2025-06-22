@@ -37,7 +37,11 @@ function verifySimpleToken(token: string, secret: string) {
     }
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-for-development-only';
+const JWT_SECRET = process.env.JWT_SECRET as string;
+
+if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is required');
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') {
