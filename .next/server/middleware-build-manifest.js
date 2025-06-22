@@ -29,11 +29,6 @@ self.__BUILD_MANIFEST = {
       "static/chunks/webpack.js",
       "static/chunks/main.js",
       "static/chunks/pages/payment-success.js"
-    ],
-    "/quote": [
-      "static/chunks/webpack.js",
-      "static/chunks/main.js",
-      "static/chunks/pages/quote.js"
     ]
   },
   "ampFirstPages": []

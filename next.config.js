@@ -12,7 +12,7 @@ const nextConfig = {
         headers: [
           {
             key: 'X-Frame-Options',
-            value: 'DENY',
+            value: 'SAMEORIGIN',
           },
           {
             key: 'X-Content-Type-Options',
@@ -25,6 +25,15 @@ const nextConfig = {
           {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=()',
+          },
+        ],
+      },
+      {
+        source: '/iframe-form.html',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'ALLOWALL',
           },
         ],
       },
