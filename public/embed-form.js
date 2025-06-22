@@ -1,7 +1,7 @@
 (function() {
     // Create the form HTML
     const formHTML = `
-        <div id="windscreen-form-container" style="width: 100%; margin: 0; background: white; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); padding: 20px; box-sizing: border-box;">
+        <div id="windscreen-form-container" style="max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); padding: 24px;">
             <div id="windscreen-error-container"></div>
             <div id="windscreen-success-container"></div>
             
