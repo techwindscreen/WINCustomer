@@ -38,6 +38,9 @@ interface PaymentConfirmationData {
   discountAmount?: number;
 }
 
+// In-memory deduplication cache (in production, use Redis or database)
+const emailSentCache = new Map<string, string | boolean>();
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });
@@ -52,10 +55,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
+    // **DEDUPLICATION CHECK**: Prevent duplicate emails for the same payment
+    const deduplicationKey = `${paymentData.paymentIntentId}_${paymentData.customerEmail}`;
+    
+    if (emailSentCache.has(deduplicationKey)) {
+      console.log('⚠️ Email already sent for this payment, skipping duplicate:', deduplicationKey);
+      const existingBookingRef = emailSentCache.get(deduplicationKey + '_booking_ref') as string || 'Unknown';
+      return res.status(200).json({ 
+        success: true, 
+        message: 'Email already sent for this payment',
+        bookingReference: existingBookingRef,
+        duplicate: true
+      });
+    }
+
     console.log('📧 Sending payment confirmation emails for:', paymentData.quoteId);
 
-    // Generate a unique booking reference
-    const bookingReference = `WC${Date.now().toString().slice(-6)}${paymentData.quoteId.slice(-3)}`;
+    // **FIXED**: Generate deterministic booking reference using payment intent ID
+    // This ensures the same payment always gets the same booking reference
+    const paymentIdSuffix = paymentData.paymentIntentId.slice(-8).toUpperCase(); // Last 8 chars of payment ID
+    const quoteIdSuffix = paymentData.quoteId.slice(-3).toUpperCase(); // Last 3 chars of quote ID
+    const bookingReference = `WC${paymentIdSuffix}${quoteIdSuffix}`;
+
+    console.log('🔖 Generated booking reference:', {
+      paymentIntentId: paymentData.paymentIntentId,
+      quoteId: paymentData.quoteId,
+      bookingReference,
+      deduplicationKey
+    });
 
     // Calculate pricing breakdown
     const formatPrice = (amount: number) => {
@@ -162,21 +189,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         day: '2-digit',
         month: 'long',
         year: 'numeric'
-      })
+      }),
+      
+      // Add deduplication fields for Klaviyo
+      unique_event_id: `payment_${paymentData.paymentIntentId}_${Date.now()}`,
+      deduplication_key: deduplicationKey
     };
 
     console.log('📧 Event data being sent to Klaviyo:', {
       booking_reference: baseEventData.booking_reference,
-      appointment_date: baseEventData.appointment_date,
-      appointment_time: baseEventData.appointment_time,
-      formatted_appointment_date: baseEventData.formatted_appointment_date,
-      amount_paid: baseEventData.amount_paid,
-      total_amount: baseEventData.total_amount,
-      materials_cost: baseEventData.materials_cost,
-      labor_cost: baseEventData.labor_cost,
-      vat_amount: baseEventData.vat_amount,
-      discount_amount: baseEventData.discount_amount
+      payment_intent_id: baseEventData.payment_intent_id,
+      deduplication_key: baseEventData.deduplication_key,
+      unique_event_id: baseEventData.unique_event_id
     });
+
+    // **MARK AS SENT BEFORE SENDING** to prevent race conditions
+    emailSentCache.set(deduplicationKey, true);
+    emailSentCache.set(deduplicationKey + '_booking_ref', bookingReference);
+    
+    // Auto-cleanup cache after 1 hour to prevent memory leaks
+    setTimeout(() => {
+      emailSentCache.delete(deduplicationKey);
+      emailSentCache.delete(deduplicationKey + '_booking_ref');
+    }, 60 * 60 * 1000); // 1 hour
 
     // Send Receipt Email
     console.log('📧 Sending payment receipt email to:', paymentData.customerEmail);
@@ -213,46 +248,57 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Continue anyway - don't let one email failure stop the others
     }
 
-    // Send Admin Order Notification (NEW!)
-    await KlaviyoService.sendAdminOrderNotification({
-      // Order information  
-      order_id: paymentData.quoteId,
-      quote_id: paymentData.quoteId,
-      order_date: new Date().toISOString(),
-      booking_reference: bookingReference,
-      
-      // Appointment details (these were missing!)
-      preferred_date: appointmentDate,
-      preferred_time: appointmentTime,
-      appointment_type: paymentData.appointmentType || 'mobile',
-      
-      // Customer information
-      user_name: paymentData.customerName,
-      user_email: paymentData.customerEmail,  
-      user_phone: paymentData.customerPhone,
-      user_location: paymentData.customerAddress || 'Not provided',
-      
-      // Vehicle information (these were missing!)
-      vehicle_registration: paymentData.vehicleReg,
-      vehicle_make: paymentData.vehicleMake || 'Unknown',
-      vehicle_model: paymentData.vehicleModel || 'Unknown', 
-      vehicle_year: paymentData.vehicleYear || 'Unknown',
-      
-      // Service details
-      glass_type: paymentData.glassType,
-      damage_type: paymentData.selectedWindows.join(', '),
-      special_requirements: 'None',
-      
-      // Payment information (these were missing!)
-      glass_price: materialsCost ? formatPrice(materialsCost) : 'N/A',
-      fitting_price: laborCost ? formatPrice(laborCost) : 'N/A', 
-      vat_amount: vatAmount ? formatPrice(vatAmount) : 'N/A',
-      total_price: formatPrice(paymentData.totalAmount),
-      payment_status: 'COMPLETED',
-      payment_method: paymentData.paymentMethod || 'card',
-      payment_type: paymentData.paymentType,
-      stripe_payment_id: paymentData.paymentIntentId
-    });
+    // Send Admin Order Notification
+    console.log('📧 Sending admin notification email...');
+    try {
+      await KlaviyoService.sendAdminOrderNotification({
+        // Order information  
+        order_id: paymentData.quoteId,
+        quote_id: paymentData.quoteId,
+        order_date: new Date().toISOString(),
+        booking_reference: bookingReference,
+        
+        // Appointment details (these were missing!)
+        preferred_date: appointmentDate,
+        preferred_time: appointmentTime,
+        appointment_type: paymentData.appointmentType || 'mobile',
+        
+        // Customer information
+        user_name: paymentData.customerName,
+        user_email: paymentData.customerEmail,  
+        user_phone: paymentData.customerPhone,
+        user_location: paymentData.customerAddress || 'Not provided',
+        
+        // Vehicle information (these were missing!)
+        vehicle_registration: paymentData.vehicleReg,
+        vehicle_make: paymentData.vehicleMake || 'Unknown',
+        vehicle_model: paymentData.vehicleModel || 'Unknown', 
+        vehicle_year: paymentData.vehicleYear || 'Unknown',
+        
+        // Service details
+        glass_type: paymentData.glassType,
+        damage_type: paymentData.selectedWindows.join(', '),
+        special_requirements: 'None',
+        
+        // Payment information (these were missing!)
+        glass_price: materialsCost ? formatPrice(materialsCost) : 'N/A',
+        fitting_price: laborCost ? formatPrice(laborCost) : 'N/A', 
+        vat_amount: vatAmount ? formatPrice(vatAmount) : 'N/A',
+        total_price: formatPrice(paymentData.totalAmount),
+        payment_status: 'COMPLETED',
+        payment_method: paymentData.paymentMethod || 'card',
+        payment_type: paymentData.paymentType,
+        stripe_payment_id: paymentData.paymentIntentId,
+        
+        // Add deduplication fields
+        unique_event_id: baseEventData.unique_event_id,
+        deduplication_key: baseEventData.deduplication_key
+      });
+      console.log('✅ Admin notification email sent successfully');
+    } catch (adminError) {
+      console.error('❌ Failed to send admin notification:', adminError);
+      // Continue anyway - don't let admin email failure stop the flow
+    }
 
     console.log('✅ Payment confirmation emails sent successfully');
 

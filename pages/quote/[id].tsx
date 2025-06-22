@@ -137,7 +137,7 @@ export default function QuoteDetailsPage() {
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Quote Not Found</h1>
           <p className="text-gray-600 mb-6">{error || 'The quote you\'re looking for doesn\'t exist.'}</p>
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.push('/vercel-homepage')}
             className="bg-[#0FB8C1] text-white px-6 py-3 rounded-lg hover:bg-[#0da8b0] transition-colors"
           >
             Back to Home

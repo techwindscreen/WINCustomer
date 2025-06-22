@@ -41,7 +41,7 @@ const PaymentFailedPage: React.FC = () => {
         <header className="bg-white py-4 px-4 border-b shadow-sm">
           <div className="container mx-auto">
             <div className="flex items-center justify-between">
-              <Link href="/">
+              <Link href="/vercel-homepage">
                 <div className="relative w-[200px] sm:w-[300px] h-[60px] sm:h-[90px]">
                   <Image
                     src="/WCLOGO.jpg"
@@ -176,7 +176,7 @@ const PaymentFailedPage: React.FC = () => {
             
             <div className="flex justify-center gap-4 mt-6">
               <Link 
-                href="/" 
+                href="/vercel-homepage" 
                 className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-800 font-medium"
               >
                 <Home className="w-4 h-4" />

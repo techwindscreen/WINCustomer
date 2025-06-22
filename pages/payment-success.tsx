@@ -233,9 +233,12 @@ const PaymentSuccessPage: React.FC = () => {
         contactDetailsEmail: realQuoteData?.contactDetails?.email
       });
       
-      if (finalQuoteId && realQuoteData?.contactDetails) {
+      // **FIXED**: Only send email once, prioritize real quote data but fall back gracefully
+      let emailSent = false;
+      
+      if (finalQuoteId && realQuoteData?.contactDetails?.email) {
         try {
-          console.log('📧 Triggering payment confirmation emails...');
+          console.log('📧 Triggering payment confirmation emails with real quote data...');
           
           const emailData = {
             // Customer details
@@ -283,69 +286,68 @@ const PaymentSuccessPage: React.FC = () => {
 
           if (emailResponse.ok) {
             console.log('✅ Payment confirmation emails sent successfully');
+            emailSent = true;
           } else {
-            console.warn('⚠️ Failed to send payment confirmation emails');
+            console.warn('⚠️ Failed to send payment confirmation emails with real data');
+            const errorText = await emailResponse.text();
+            console.error('❌ Email error response:', errorText);
           }
         } catch (emailError) {
-          console.warn('⚠️ Error sending payment confirmation emails:', emailError);
-          // Don't fail the main flow if email sending fails
+          console.warn('⚠️ Error sending payment confirmation emails with real data:', emailError);
         }
-      } else {
-        // Fallback: try to send email even if we don't have full quote data
-        console.log('⚠️ Missing quote data or contact details, but attempting fallback email if we have basic info');
-        
-        if (finalQuoteId) {
-          try {
-            // Try to send basic payment confirmation with minimal data
-            const fallbackEmailData = {
-               customerName: 'Valued Customer',
-               customerEmail: stripeCustomerEmail || 'no-email@windscreencompare.com', // From payment metadata
-              customerPhone: '',
-              quoteId: finalQuoteId,
-              paymentIntentId,
-              amount: actualAmount,
-              totalAmount: actualTotalAmount,
-              paymentType: detectedPaymentType,
-              paymentMethod: 'card',
-              glassType: 'OEE',
-              selectedWindows: ['Windscreen'],
-              vehicleReg: finalQuoteId, // Fallback to quote ID
-              bookingDate: fallbackDateString,
-              bookingTime: '10:00 AM - 12:00 PM',
-              discountAmount: detectedPaymentType === 'full' && actualTotalAmount > actualAmount ? 
-                             Math.round(actualTotalAmount * 0.05) : undefined
-            };
+      }
+      
+      // **FALLBACK**: Only send fallback email if the main email failed AND we have a valid email
+      if (!emailSent && finalQuoteId && stripeCustomerEmail && stripeCustomerEmail !== 'no-email@windscreencompare.com' && stripeCustomerEmail.includes('@')) {
+        try {
+          console.log('📧 Attempting fallback email send with Stripe metadata...');
+          
+          const fallbackEmailData = {
+            customerName: 'Valued Customer',
+            customerEmail: stripeCustomerEmail,
+            customerPhone: '',
+            quoteId: finalQuoteId,
+            paymentIntentId,
+            amount: actualAmount,
+            totalAmount: actualTotalAmount,
+            paymentType: detectedPaymentType,
+            paymentMethod: 'card',
+            glassType: 'OEE',
+            selectedWindows: ['Windscreen'],
+            vehicleReg: finalQuoteId, // Fallback to quote ID
+            bookingDate: fallbackDateString,
+            bookingTime: '10:00 AM - 12:00 PM',
+            discountAmount: detectedPaymentType === 'full' && actualTotalAmount > actualAmount ? 
+                           Math.round(actualTotalAmount * 0.05) : undefined
+          };
 
-            console.log('📧 Attempting fallback email send...');
-            console.log('⚠️ Note: Using fallback data - customer email from metadata:', stripeCustomerEmail);
-            console.log('🔍 Payment metadata debug:', {
-              stripeCustomerEmail,
-              hasValidEmail: !!(stripeCustomerEmail && stripeCustomerEmail !== 'no-email@windscreencompare.com'),
-              emailLength: stripeCustomerEmail?.length,
-              emailContainsAt: stripeCustomerEmail?.includes('@')
-            });
-             
-             // ALWAYS try to send email, even with placeholder email for debugging
-             const emailResponse = await fetch('/api/send-payment-confirmation', {
-               method: 'POST',
-               headers: { 'Content-Type': 'application/json' },
-               body: JSON.stringify(fallbackEmailData)
-             });
-             
-             if (emailResponse.ok) {
-               console.log('✅ Fallback payment confirmation emails sent successfully');
-               const emailResult = await emailResponse.json();
-               console.log('📧 Email response:', emailResult);
-             } else {
-               console.warn('⚠️ Failed to send fallback payment confirmation emails');
-               const errorText = await emailResponse.text();
-               console.error('❌ Email error response:', errorText);
-             }
-            
-          } catch (fallbackError) {
-            console.warn('⚠️ Fallback email sending also failed:', fallbackError);
+          console.log('📧 Fallback email data:', {
+            customerEmail: fallbackEmailData.customerEmail,
+            paymentIntentId: fallbackEmailData.paymentIntentId,
+            quoteId: fallbackEmailData.quoteId
+          });
+           
+          const emailResponse = await fetch('/api/send-payment-confirmation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(fallbackEmailData)
+          });
+           
+          if (emailResponse.ok) {
+            console.log('✅ Fallback payment confirmation emails sent successfully');
+            emailSent = true;
+          } else {
+            console.warn('⚠️ Failed to send fallback payment confirmation emails');
+            const errorText = await emailResponse.text();
+            console.error('❌ Fallback email error response:', errorText);
           }
+        } catch (fallbackError) {
+          console.warn('⚠️ Fallback email sending also failed:', fallbackError);
         }
+      }
+      
+      if (!emailSent) {
+        console.warn('⚠️ No emails were sent for this payment - this may indicate a configuration issue');
       }
     } catch (err) {
       console.error('Error fetching payment details:', err);
@@ -381,7 +383,7 @@ const PaymentSuccessPage: React.FC = () => {
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Payment Failed</h1>
           <p className="text-gray-600 mb-6">{error}</p>
-          <Link href="/" className="bg-[#0FB8C1] text-white px-6 py-3 rounded-lg hover:bg-[#0da8b0] transition-colors">
+          <Link href="/vercel-homepage" className="bg-[#0FB8C1] text-white px-6 py-3 rounded-lg hover:bg-[#0da8b0] transition-colors">
             Back to Home
           </Link>
         </div>
@@ -401,7 +403,7 @@ const PaymentSuccessPage: React.FC = () => {
         <header className="bg-white py-4 px-4 border-b shadow-sm">
           <div className="container mx-auto">
             <div className="flex items-center justify-between">
-              <Link href="/">
+              <Link href="/vercel-homepage">
                 <div className="relative w-[200px] sm:w-[300px] h-[60px] sm:h-[90px]">
                   <Image
                     src="/WCLOGO.jpg"
@@ -685,7 +687,7 @@ const PaymentSuccessPage: React.FC = () => {
           {/* Back to Home */}
           <div className="mt-12 text-center">
             <Link 
-              href="/" 
+              href="/vercel-homepage" 
               className="inline-flex items-center gap-2 text-[#0FB8C1] hover:text-[#0da8b0] font-medium"
             >
               ← Back to Homepage
