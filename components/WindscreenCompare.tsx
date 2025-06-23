@@ -15,6 +15,7 @@ const WindscreenCompare: React.FC = () => {
   const [error, setError] = useState('')
 
   useEffect(() => {
+    // Load saved data from localStorage if available
     if (typeof window !== 'undefined') {
       const savedData = localStorage.getItem('windscreenCompareData');
       if (savedData) {
@@ -25,11 +26,13 @@ const WindscreenCompare: React.FC = () => {
     }
   }, []);
 
+  // UK postcode validation - covers most common formats
   const isValidUKPostcode = (postcode: string) => {
     const postcodeRegex = /^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$/i;
     return postcodeRegex.test(postcode.trim());
   };
 
+  // Vehicle reg validation - bit loose but should catch most cases
   const isValidUKVehicleReg = (reg: string) => {
     const regRegex = /^[A-Z]{2}[0-9]{2}[A-Z]{3}$|^[A-Z][0-9]{3}[A-Z]{3}$|^[A-Z]{2}[0-9]{2} [A-Z]{3}$|^[A-Z][0-9]{3} [A-Z]{3}$/i;
     return regRegex.test(reg.trim());
@@ -39,6 +42,7 @@ const WindscreenCompare: React.FC = () => {
     e.preventDefault()
     setError('')
 
+    // Basic validation first
     if (!vehicleReg || !postcode) {
       setError('Please fill in all fields');
       return;
@@ -54,11 +58,15 @@ const WindscreenCompare: React.FC = () => {
       return;
     }
 
+    // Generate a unique quote ID - using timestamp + random chars
     const timestamp = new Date().getTime().toString().slice(-6);
     const random = Math.random().toString(36).substring(2, 5).toUpperCase();
     const quoteID = `WC${timestamp}${random}`;
+    
+    // console.log('Generated quote ID:', quoteID); // TODO: remove before prod
 
     try {
+      // Save to localStorage for later use
       if (typeof window !== 'undefined') {
         localStorage.setItem('windscreenCompareData', JSON.stringify({
           vehicleReg: vehicleReg.toUpperCase(),
@@ -67,7 +75,7 @@ const WindscreenCompare: React.FC = () => {
         }));
       }
 
-      // Track quote started event in Klaviyo
+      // Track quote started event in Klaviyo - this is optional
       try {
         await fetch('/api/track-quote-started', {
           method: 'POST',
@@ -77,14 +85,15 @@ const WindscreenCompare: React.FC = () => {
           body: JSON.stringify({
             vehicleReg: vehicleReg.toUpperCase(),
             quoteId: quoteID,
-            // userEmail and userPhone are not available at this stage
+            // Note: userEmail and userPhone not available at this stage
           }),
         });
       } catch (trackingError) {
         console.error('Tracking error:', trackingError);
-        // Don't block the user flow if tracking fails
+        // Don't block user flow if tracking fails - not critical
       }
 
+      // Navigate to next step
       router.push({
         pathname: '/damage-location',
         query: { 

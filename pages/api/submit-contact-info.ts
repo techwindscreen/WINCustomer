@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(400).json({ message: 'Quote ID is required' });
         }
 
-        // Map payment option to standardized values
+        // Map payment option to standardized vals - bit messy but works
         let standardizedPaymentOption = 'full';
         if (paymentOption) {
             const option = paymentOption.toLowerCase();
@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             glassType
         });
 
-        // Check if record exists
+        // Check if record already exists
         const { data: existingRecord } = await supabase
             .from('MasterCustomer')
             .select()
@@ -75,7 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             if (error) throw error;
             result = data;
         } else {
-            // Insert new record
+            // Insert new record - first time customer
             const { data, error } = await supabase
                 .from('MasterCustomer')
                 .insert([{
@@ -108,7 +108,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             result = data;
         }
 
-        // Track quote completion in Klaviyo
+        // Track quote completion in Klaviyo - this might fail sometimes
         try {
             await KlaviyoService.trackQuoteCompleted({
                 vehicleReg: formData.vehicleReg || result.vehicle_reg || '',
@@ -119,7 +119,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 selectedWindows: selectedWindows || [],
                 windowDamage: windowDamage || {},
                 specifications: specifications || [],
-                glassType: glassType || 'OEE', // Use actual glass type or default to OEE
+                glassType: glassType || 'OEE', // fallback to OEE if not specified
                 quotePrice: quotePrice || result.quote_price || 0,
                 quoteId: quoteId,
                 timestamp: new Date().toISOString(),
@@ -133,7 +133,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
         } catch (klaviyoError) {
             console.error('Klaviyo tracking error:', klaviyoError);
-            // Don't fail the main request if Klaviyo fails
+            // Don't fail the main request if Klaviyo fails - not the end of the world
         }
 
         return res.status(200).json({

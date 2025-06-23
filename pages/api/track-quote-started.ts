@@ -15,17 +15,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const { vehicleReg, quoteId, userEmail, userPhone } = req.body;
     
+    // Basic validation - make sure we have the essentials
     if (!vehicleReg || !quoteId) {
-      return res.status(400).json({ message: 'Vehicle registration and quote ID are required' });
+      return res.status(400).json({ 
+        message: 'Vehicle registration and quote ID are required',
+        received: { vehicleReg: !!vehicleReg, quoteId: !!quoteId }
+      });
     }
 
-    // Get user agent and IP address for tracking
-    const userAgent = req.headers['user-agent'] || '';
-    const ipAddress = req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || req.connection.remoteAddress || '';
+    // Get user agent and IP for tracking (optional)
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || 'Unknown';
+    
+    // console.log('Quote started tracking request:', { vehicleReg, quoteId, userAgent, ip }); // debug
 
     console.log('📤 Sending to Klaviyo...');
     
-    // Track the quote started event
+    // Track the quote start event
     await KlaviyoService.trackQuoteStarted({
       vehicleReg,
       quoteId,
@@ -33,19 +39,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       userPhone,
       timestamp: new Date().toISOString(),
       userAgent,
-      ipAddress: Array.isArray(ipAddress) ? ipAddress[0] : ipAddress
+      ipAddress: Array.isArray(ip) ? ip[0] : ip, // handle forwarded IPs
     });
 
     console.log('✅ Successfully sent to Klaviyo');
 
-    return res.status(200).json({ 
-      success: true, 
-      message: 'Quote started event tracked successfully' 
+    return res.status(200).json({
+      success: true,
+      message: 'Quote started event tracked successfully',
+      quoteId
     });
   } catch (error) {
-    console.error('❌ Error tracking quote started:', error);
-    return res.status(500).json({ 
-      message: 'Failed to track quote started event',
+    console.error('Error tracking quote started event:', error);
+    
+    // Don't fail the user flow if tracking fails
+    return res.status(200).json({
+      success: false,
+      message: 'Tracking failed but continuing...',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }

@@ -5,20 +5,22 @@ const session = new ApiKeySession(process.env.KLAVIYO_PRIVATE_API_KEY || '');
 const eventsApi = new EventsApi(session);
 const profilesApi = new ProfilesApi(session);
 
-interface QuoteCompletedData {
+// Klaviyo service for handling email campaigns and user tracking
+// Using their latest API version (2024-05-15)
+
+export interface QuoteCompletedData {
   vehicleReg: string;
   userEmail: string;
   userName: string;
   userPhone: string;
-  userLocation?: string;
+  userLocation: string;
   selectedWindows: string[];
-  windowDamage: Record<string, string>;
+  windowDamage: Record<string, any>;
   specifications: string[];
   glassType: string;
   quotePrice: number;
   quoteId: string;
   timestamp: string;
-  // Additional fields for enhanced admin notification
   appointmentDate?: string;
   appointmentTime?: string;
   paymentOption?: string;
@@ -92,9 +94,80 @@ export class KlaviyoService {
     }
   }
 
+  // Track when user completes quote form
+  static async trackQuoteCompleted(data: QuoteCompletedData) {
+    try {
+      console.log('📊 Tracking quote completion for:', data.quoteId);
+
+      const payload = {
+        data: {
+          type: 'event',
+          attributes: {
+            properties: {
+              vehicle_registration: data.vehicleReg,
+              quote_id: data.quoteId,
+              quote_price: data.quotePrice,
+              glass_type: data.glassType,
+              selected_windows: data.selectedWindows,
+              window_damage: data.windowDamage,
+              specifications: data.specifications,
+              timestamp: data.timestamp,
+              appointment_date: data.appointmentDate,
+              appointment_time: data.appointmentTime,
+              payment_option: data.paymentOption,
+              vehicle_make: data.vehicleMake,
+              vehicle_model: data.vehicleModel,
+              vehicle_year: data.vehicleYear,
+              source: 'windscreen-compare-website',
+              event_type: 'quote_completed'
+            },
+            metric: {
+              data: {
+                type: 'metric',
+                attributes: {
+                  name: 'Quote Completed'
+                }
+              }
+            },
+            profile: {
+              data: {
+                type: 'profile',
+                attributes: {
+                  email: data.userEmail,
+                  properties: {
+                    first_name: data.userName.split(' ')[0] || '',
+                    last_name: data.userName.split(' ').slice(1).join(' ') || '',
+                    phone_number: data.userPhone,
+                    location: data.userLocation,
+                    latest_quote_id: data.quoteId,
+                    latest_vehicle_reg: data.vehicleReg,
+                    latest_quote_price: data.quotePrice,
+                    latest_glass_type: data.glassType
+                  }
+                }
+              }
+            },
+            time: new Date().toISOString()
+          }
+        }
+      };
+
+      await KlaviyoService.makeAPICall('/events/', payload);
+      console.log('✅ Quote completion tracking successful');
+
+      // Also trigger the quote completion email template
+      // TODO: move this to a separate function for better organization
+      // await KlaviyoService.sendQuoteCompletionEmail(data);
+
+    } catch (error) {
+      console.error('❌ Quote completion tracking failed:', error);
+      throw error; // Re-throw since this is more critical
+    }
+  }
+
   // Track when a user completes the quote (submits contact info)
   // This only sends the admin notification - no customer tracking
-  static async trackQuoteCompleted(data: QuoteCompletedData) {
+  static async trackQuoteCompletedAdmin(data: QuoteCompletedData) {
     try {
       console.log('📧 Sending admin notification for quote completed');
       

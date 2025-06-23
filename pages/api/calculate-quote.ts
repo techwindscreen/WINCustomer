@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabase } from '../../lib/supabaseClient';
 
-// Type definitions
+// Window IDs - these match the SVG map element IDs
 type WindowId = 'jqvmap1_ws' | 'jqvmap1_rw' | 'jqvmap1_df' | 'jqvmap1_dg' | 'jqvmap1_dr' | 'jqvmap1_dd' | 'jqvmap1_vp' | 'jqvmap1_vf' | 'jqvmap1_vr' | 'jqvmap1_vg' | 'jqvmap1_qr' | 'jqvmap1_qg';
-// Note: Damage types are collected but not used in pricing calculations
+// Note: damage types are collected but not used in pricing calcs (yet)
 type SpecificationType = 'Rain Sensor' | 'Sensor' | 'Heated' | 'Camera' | 'Heads Up Display' | 'HUD' | 'Aerial Antenna' | 'No Modification' | 'Not Sure?';
 type GlassType = 'OEM' | 'OEE' | 'standard';
 
@@ -25,7 +25,7 @@ interface PriceBreakdown {
   otrPrice?: number | null;
 }
 
-// Fetch vehicle valuation data
+// Fetch vehicle val data from UK Vehicle Data API
 async function fetchVehicleValuation(registration: string) {
   try {
     const apiKey = process.env.UK_VEHICLE_DATA_API_KEY;
@@ -35,7 +35,7 @@ async function fetchVehicleValuation(registration: string) {
       return null;
     }
 
-    console.log(`Fetching valuation data for registration: ${registration}`);
+    console.log(`Fetching valuation data for reg: ${registration}`);
     
     const response = await fetch(
       `https://uk1.ukvehicledata.co.uk/api/datapackage/ValuationData?v=2&api_nullitems=1&auth_apikey=${apiKey}&key_VRM=${registration}`,
@@ -48,10 +48,10 @@ async function fetchVehicleValuation(registration: string) {
     );
 
     const data = await response.json();
-    console.log('Full Valuation API response:', JSON.stringify(data, null, 2));
+    // console.log('Full Val API response:', JSON.stringify(data, null, 2)); // debug - remove later
 
     if (data.Response?.StatusCode === "Success") {
-      console.log('API call successful, checking for valuation data...');
+      console.log('API call successful, checking for val data...');
       
       // Check the correct path for valuation data
       const dataItems = data.Response.DataItems;
@@ -84,33 +84,31 @@ async function fetchVehicleValuation(registration: string) {
 }
 
 // Calculate materials cost based on OTR price and window type
-// Example: For OTR price £20,000 with Windscreen + Front Driver Door + Rear Window + Rear Driver Door + Rear Passenger Door + Front Passenger Door:
+// Example calc: For OTR price £20,000 with Windscreen + Front Driver Door + Rear Window + etc:
 // - Windscreen: 1.2% × £20,000 = £240
 // - Front Driver Door: 0.25% × £20,000 = £50  
 // - Rear Window: 0.5% × £20,000 = £100
-// - Rear Driver Door: 0.25% × £20,000 = £50
-// - Rear Passenger Door: 0.25% × £20,000 = £50
-// - Front Passenger Door: 0.25% × £20,000 = £50
-// Total: £540 (+ £30 per window if tinted)
+// - etc... Total: £540 (+ £30 per window if tinted)
 function calculateMaterialsCost(otrPrice: number | null, selectedWindows: string[], glassColor?: Record<string, string>): number {
   if (!otrPrice || isNaN(otrPrice)) {
-    console.log('OTR price not available, using minimum materials cost of £70');
-    return 70;
+    console.log('OTR price not available, using min materials cost of £70');
+    return 70; // fallback minimum
   }
 
   // Window type percentage multipliers based on OTR price
+  // These percentages are based on industry standards... sort of
   const windowOTRPercentages = {
     'jqvmap1_ws': 0.012,    // Windscreen - 1.2%
     'jqvmap1_rw': 0.005,    // Rear Window - 0.5%
-    'jqvmap1_df': 0.0025,   // Front Passenger Door - 0.25% (sides)
+    'jqvmap1_df': 0.0025,   // Front Pass Door - 0.25% (sides)
     'jqvmap1_dg': 0.0025,   // Front Driver Door - 0.25% (sides)
-    'jqvmap1_dr': 0.0025,   // Rear Passenger Door - 0.25% (sides)
+    'jqvmap1_dr': 0.0025,   // Rear Pass Door - 0.25% (sides)
     'jqvmap1_dd': 0.0025,   // Rear Driver Door - 0.25% (sides)
-    'jqvmap1_vp': 0.005,    // Front Passenger Vent - 0.5% (quart light)
+    'jqvmap1_vp': 0.005,    // Front Pass Vent - 0.5% (quart light)
     'jqvmap1_vf': 0.005,    // Front Driver Vent - 0.5% (quart light)
-    'jqvmap1_vr': 0.005,    // Rear Passenger Vent - 0.5% (quart light)
+    'jqvmap1_vr': 0.005,    // Rear Pass Vent - 0.5% (quart light)
     'jqvmap1_vg': 0.005,    // Rear Driver Vent - 0.5% (quart light)
-    'jqvmap1_qr': 0.004,    // Rear Passenger Quarter Light - 0.4% (quarter)
+    'jqvmap1_qr': 0.004,    // Rear Pass Quarter - 0.4% (quarter)
     'jqvmap1_qg': 0.004     // Rear Driver Quarter - 0.4% (quarter)
   } as Record<string, number>;
 
@@ -134,10 +132,10 @@ function calculateMaterialsCost(otrPrice: number | null, selectedWindows: string
         console.log(`Window ${windowId}: ${percentage * 100}% of £${otrPrice} = £${windowCost.toFixed(2)}${privacyNote} = £${(windowCost + privacyCost).toFixed(2)}`);
       } else {
         console.log(`Unknown window type: ${windowId}, using default 0.25% of OTR`);
-        const windowCost = otrPrice * 0.0025; // Default 0.25%
+        const windowCost = otrPrice * 0.0025; // Default fallback
         totalMaterialsCost += windowCost;
         
-        // Check for privacy/tinting and add £30 if applicable
+        // Check for privacy/tinting
         let privacyCost = 0;
         if (glassColor && glassColor[windowId] === 'Tinted Black') {
           privacyCost = 30;
@@ -150,19 +148,19 @@ function calculateMaterialsCost(otrPrice: number | null, selectedWindows: string
     }
   }
 
-  // Ensure minimum materials cost is £70
+  // Make sure min materials cost is £70
   const finalCost = Math.max(totalMaterialsCost, 70);
   console.log(`Total materials cost: £${totalMaterialsCost.toFixed(2)}, Final cost (min £70): £${finalCost.toFixed(2)}`);
   
-  return Math.round(finalCost * 100) / 100; // Round to 2 decimal places
+  return Math.round(finalCost * 100) / 100; // Round to 2 dp
 }
 
 // Pricing constants for modifiers and add-ons
 const GLASS_PRICING = {
   // Window type multipliers (relative to base quote price)
   windows: {
-    'jqvmap1_ws': { multiplier: 1.0, name: 'Windscreen' },      // Base multiplier for windscreen
-    'jqvmap1_rw': { multiplier: 0.8, name: 'Rear Window' },     // 80% of windscreen price
+    'jqvmap1_ws': { multiplier: 1.0, name: 'Windscreen' },      // Base multiplier
+    'jqvmap1_rw': { multiplier: 0.8, name: 'Rear Window' },     // 80% of windscreen
     'jqvmap1_df': { multiplier: 0.5, name: 'Front Passenger Door' },
     'jqvmap1_dg': { multiplier: 0.5, name: 'Front Driver Door' },
     'jqvmap1_dr': { multiplier: 0.45, name: 'Rear Passenger Door' },
@@ -175,9 +173,9 @@ const GLASS_PRICING = {
     'jqvmap1_qg': { multiplier: 0.3, name: 'Rear Driver Quarter' }
   } as Record<WindowId, { multiplier: number; name: string }>,
   
-  // Note: Damage type multipliers are now handled within calculateMaterialsCost function
+  // Note: Damage type multipliers now handled in calculateMaterialsCost func
   
-  // Specification add-ons (flat fees)
+  // Spec add-ons (flat fees)
   specifications: {
     'Rain Sensor': 25,
     'Sensor': 25,
