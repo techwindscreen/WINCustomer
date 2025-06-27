@@ -61,7 +61,7 @@ const WindscreenCompare: React.FC = () => {
     // Generate a unique quote ID - using timestamp + random chars
     const timestamp = new Date().getTime().toString().slice(-6);
     const random = Math.random().toString(36).substring(2, 5).toUpperCase();
-    const quoteID = `WC${timestamp}${random}`;
+    const quoteID = `WIN${timestamp}${random}`;
     
     // console.log('Generated quote ID:', quoteID); // TODO: remove before prod
 

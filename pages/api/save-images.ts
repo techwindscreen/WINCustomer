@@ -7,14 +7,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { quoteId, imageUrls } = req.body;
+    const { quoteId, imageUrls, action = 'append' } = req.body;
 
     if (!quoteId) {
       return res.status(400).json({ message: 'Quote ID is required' });
     }
 
-    if (!imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0) {
-      return res.status(400).json({ message: 'Image URLs are required' });
+    if (!imageUrls || !Array.isArray(imageUrls)) {
+      return res.status(400).json({ message: 'Image URLs must be an array' });
     }
 
     // First, let's check if the record exists and what fields are available
@@ -34,15 +34,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('Existing record structure:', Object.keys(existingRecord));
 
-    // Try to get existing images from damage_images field if it exists
-    let existingImages: string[] = [];
-    if (existingRecord.damage_images) {
-      existingImages = Array.isArray(existingRecord.damage_images) 
-        ? existingRecord.damage_images 
-        : [];
+    // Handle different actions
+    let allImages: string[] = [];
+    
+    if (action === 'replace') {
+      // Replace all images with the new array
+      allImages = imageUrls;
+    } else {
+      // Append new images to existing ones (default behavior)
+      let existingImages: string[] = [];
+      if (existingRecord.damage_images) {
+        existingImages = Array.isArray(existingRecord.damage_images) 
+          ? existingRecord.damage_images 
+          : [];
+      }
+      allImages = [...existingImages, ...imageUrls];
     }
-
-    const allImages = [...existingImages, ...imageUrls];
 
     // Try to update with damage_images field
     try {

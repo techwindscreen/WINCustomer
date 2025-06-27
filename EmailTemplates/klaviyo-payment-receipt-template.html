@@ -53,7 +53,10 @@
           </h3>
           <div style="font-size: 16px; line-height: 1.8;">
             <p style="margin: 0 0 10px 0;">
-              <strong style="color: #333;">Vehicle:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.vehicle_registration}} ({{event.vehicle_make}} {{event.vehicle_model}})</span>
+              <strong style="color: #333;">Vehicle:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.vehicle_registration}}</span>
+            </p>
+            <p style="margin: 0 0 10px 0;">
+              <strong style="color: #333;">Make & Model:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.vehicle_make}} {{event.vehicle_model}} ({{event.vehicle_year}})</span>
             </p>
             <p style="margin: 0 0 10px 0;">
               <strong style="color: #333;">Glass Type:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{event.glass_type}}</span>
@@ -73,39 +76,101 @@
             💰 Price Breakdown
           </h3>
           <div style="font-size: 14px; line-height: 1.6;">
-            {% if event.materials_cost %}
-            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-              <span style="color: #333;">Materials:</span>
-              <span style="color: #333; font-weight: 600;">{{event.materials_cost}}</span>
-            </div>
-            {% endif %}
+            <!-- Labor & Service Section -->
             {% if event.labor_cost %}
-            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-              <span style="color: #333;">Labor:</span>
-              <span style="color: #333; font-weight: 600;">{{event.labor_cost}}</span>
+            <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                <span style="color: #333; font-weight: 600;">Labor & Service:</span>
+                <span style="color: #333; font-weight: 600;">{{event.labor_cost}}</span>
+              </div>
+              <div style="font-size: 12px; color: #666; margin-left: 10px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                  <span>• Professional Installation</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                  <span>• Mobile Service & Tools</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span>• Quality Assurance</span>
+                </div>
+              </div>
             </div>
             {% endif %}
+            
+            <!-- Materials & Glass Section -->
+            {% if event.materials_cost %}
+            <div style="background-color: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                <span style="color: #333; font-weight: 600;">Materials & Glass:</span>
+                <span style="color: #333; font-weight: 600;">{{event.materials_cost}}</span>
+              </div>
+              <div style="font-size: 12px; color: #666; margin-left: 10px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                  <span>• Glass & Sealants</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span>• Installation Materials</span>
+                </div>
+                {% if event.glass_type == 'OEM' %}
+                <div style="display: flex; justify-content: space-between; margin-top: 4px; color: #e67e22; font-weight: 500;">
+                  <span>• Premium Glass Upgrade</span>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+            {% endif %}
+
+            <!-- Service Fee -->
+            {% if event.service_fee %}
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+              <span style="color: #333;">Service Fee (20%):</span>
+              <span style="color: #333; font-weight: 600;">{{event.service_fee}}</span>
+            </div>
+            {% endif %}
+
+            <!-- Subtotal -->
+            {% if event.subtotal %}
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+              <span style="color: #333;">Subtotal:</span>
+              <span style="color: #333; font-weight: 600;">{{event.subtotal}}</span>
+            </div>
+            {% endif %}
+
+            <!-- VAT -->
             {% if event.vat_amount %}
             <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-              <span style="color: #333;">VAT:</span>
+              <span style="color: #333;">VAT (20%):</span>
               <span style="color: #333; font-weight: 600;">{{event.vat_amount}}</span>
             </div>
             {% endif %}
+
+            <!-- Discount -->
             {% if event.discount_amount %}
             <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-              <span style="color: #333;">Discount:</span>
-              <span style="color: #333; font-weight: 600;">-{{event.discount_amount}}</span>
+              <span style="color: #27ae60;">Pay in Full Discount (5%):</span>
+              <span style="color: #27ae60; font-weight: 600;">-{{event.discount_amount}}</span>
             </div>
             {% endif %}
+
             <hr style="border: none; border-top: 1px solid #dee2e6; margin: 15px 0;"/>
-            <div style="display: flex; justify-content: space-between;">
+            
+            <!-- Total Amount -->
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+              <span style="color: #333; font-weight: bold; font-size: 16px;">Total Service Cost:</span>
+              <span style="color: #333; font-weight: bold; font-size: 16px;">{{event.total_amount}}</span>
+            </div>
+
+            <!-- Amount Paid -->
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
               <span style="color: #0FB8C1; font-weight: bold; font-size: 16px;">Amount Paid:</span>
               <span style="color: #0FB8C1; font-weight: bold; font-size: 16px;">{{event.amount_paid}}</span>
             </div>
+
+            <!-- Remaining Balance -->
             {% if event.remaining_amount %}
-            <div style="display: flex; justify-content: space-between; margin-top: 8px;">
-              <span style="color: #333; font-weight: bold;">Remaining Balance:</span>
-              <span style="color: #333; font-weight: bold;">{{event.remaining_amount}}</span>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: #e67e22; font-weight: bold;">Remaining Balance:</span>
+              <span style="color: #e67e22; font-weight: bold;">{{event.remaining_amount}}</span>
             </div>
             {% endif %}
           </div>

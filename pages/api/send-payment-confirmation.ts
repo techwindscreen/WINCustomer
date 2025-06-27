@@ -1,6 +1,42 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import KlaviyoService from '../../lib/klaviyo';
 
+// Window ID to name mapping
+const windowNameMapping: { [key: string]: string } = {
+  'jqvmap1_ws': 'Front Windscreen',
+  'jqvmap1_rw': 'Rear Window',
+  'jqvmap1_vp': 'Front Passenger Vent',
+  'jqvmap1_df': 'Front Passenger Door',
+  'jqvmap1_dr': 'Rear Passenger Door',
+  'jqvmap1_vr': 'Rear Passenger Vent',
+  'jqvmap1_qr': 'Rear Passenger Quarter',
+  'jqvmap1_vf': 'Front Driver Vent',
+  'jqvmap1_dg': 'Front Driver Door',
+  'jqvmap1_dd': 'Rear Driver Door',
+  'jqvmap1_vg': 'Rear Driver Vent',
+  'jqvmap1_qg': 'Rear Driver Quarter'
+};
+
+// Function to format windows with repair/replacement status
+const formatWindowsWithStatus = (windows: string[], windowDamage?: any): string => {
+  if (!windows || windows.length === 0) return 'Windscreen Service';
+  
+  return windows.map(windowId => {
+    const windowName = windowNameMapping[windowId] || windowId;
+    
+    // Determine if it's repair or replacement
+    // Repair only if it's a windscreen with chip damage smaller than 5p coin
+    let serviceType = 'Replacement';
+    if (windowId === 'jqvmap1_ws' && windowDamage && windowDamage[windowId] === 'Chipped') {
+      // Note: We don't have chip size data in payment confirmation, so we'll assume replacement
+      // In a real implementation, this data should be passed through
+      serviceType = 'Repair'; 
+    }
+    
+    return `${windowName} (${serviceType})`;
+  }).join(', ');
+};
+
 interface PaymentConfirmationData {
   // Customer details
   customerName: string;
@@ -25,6 +61,7 @@ interface PaymentConfirmationData {
   quoteId: string;
   glassType: string; // 'OEE' or 'OEM'
   selectedWindows: string[];
+  windowDamage?: any; // Window damage data
   
   // Booking details
   bookingDate?: string;
@@ -36,6 +73,9 @@ interface PaymentConfirmationData {
   laborCost?: number;
   vatAmount?: number;
   discountAmount?: number;
+  serviceFee?: number;
+  subtotal?: number;
+  totalBeforeVAT?: number;
 }
 
 // In-memory deduplication cache (in production, use Redis or database)
@@ -75,7 +115,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // This ensures the same payment always gets the same booking reference
     const paymentIdSuffix = paymentData.paymentIntentId.slice(-8).toUpperCase(); // Last 8 chars of payment ID
     const quoteIdSuffix = paymentData.quoteId.slice(-3).toUpperCase(); // Last 3 chars of quote ID
-    const bookingReference = `WC${paymentIdSuffix}${quoteIdSuffix}`;
+    const bookingReference = `WIN${paymentIdSuffix}${quoteIdSuffix}`;
 
     console.log('🔖 Generated booking reference:', {
       paymentIntentId: paymentData.paymentIntentId,
@@ -99,23 +139,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let materialsCost = paymentData.materialsCost;
     let laborCost = paymentData.laborCost;
     let vatAmount = paymentData.vatAmount;
+    let serviceFee = paymentData.serviceFee;
+    let subtotal = paymentData.subtotal;
+    let totalBeforeVAT = paymentData.totalBeforeVAT;
 
     // If pricing breakdown is not provided, calculate estimated values
     // NOTE: This may cause pricing discrepancies with the website quote
     // Consider fetching actual pricing breakdown from quote data instead
     if (!materialsCost && !laborCost && !vatAmount) {
       // VAT is 20% in UK
-      const totalWithoutVat = Math.round(paymentData.totalAmount / 1.2);
-      vatAmount = paymentData.totalAmount - totalWithoutVat;
+      totalBeforeVAT = Math.round(paymentData.totalAmount / 1.2);
+      vatAmount = paymentData.totalAmount - totalBeforeVAT;
       
       // Estimate materials and labor (roughly 60% materials, 40% labor before VAT)
-      materialsCost = Math.round(totalWithoutVat * 0.6);
-      laborCost = totalWithoutVat - materialsCost;
+      const subtotalBeforeServiceFee = Math.round(totalBeforeVAT / 1.2); // Remove service fee
+      materialsCost = Math.round(subtotalBeforeServiceFee * 0.6);
+      laborCost = subtotalBeforeServiceFee - materialsCost;
+      subtotal = materialsCost + laborCost;
+      serviceFee = totalBeforeVAT - subtotal; // 20% service fee
       
       console.log('💰 Calculated pricing breakdown:', {
         original_total: paymentData.totalAmount,
         estimated_materials: materialsCost,
         estimated_labor: laborCost,
+        estimated_subtotal: subtotal,
+        estimated_service_fee: serviceFee,
+        estimated_total_before_vat: totalBeforeVAT,
         estimated_vat: vatAmount,
         warning: 'Using estimated breakdown - may not match website pricing'
       });
@@ -152,7 +201,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       quote_id: paymentData.quoteId,
       booking_reference: bookingReference,
       glass_type: paymentData.glassType,
-      selected_windows: paymentData.selectedWindows.join(', '),
+      selected_windows: formatWindowsWithStatus(paymentData.selectedWindows, paymentData.windowDamage),
       
       // Payment information
       payment_intent_id: paymentData.paymentIntentId,
@@ -166,6 +215,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       discount_amount: paymentData.discountAmount ? formatPrice(paymentData.discountAmount) : null,
       materials_cost: materialsCost ? formatPrice(materialsCost) : null,
       labor_cost: laborCost ? formatPrice(laborCost) : null,
+      service_fee: serviceFee ? formatPrice(serviceFee) : null,
+      subtotal: subtotal ? formatPrice(subtotal) : null,
+      total_before_vat: totalBeforeVAT ? formatPrice(totalBeforeVAT) : null,
       vat_amount: vatAmount ? formatPrice(vatAmount) : null,
       
       // Appointment details
@@ -277,7 +329,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         
         // Service details
         glass_type: paymentData.glassType,
-        damage_type: paymentData.selectedWindows.join(', '),
+        damage_type: formatWindowsWithStatus(paymentData.selectedWindows, paymentData.windowDamage),
         special_requirements: 'None',
         
         // Payment information (these were missing!)

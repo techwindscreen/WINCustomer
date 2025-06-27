@@ -66,8 +66,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     // Mock data for demonstration - replace with actual database lookup
     const mockQuotes: Record<string, QuoteData> = {
-      'WC-2024-001234': {
-        id: 'WC-2024-001234',
+      'WIN-2024-001234': {
+        id: 'WIN-2024-001234',
         bookingReference: 'BK-001234',
         status: 'confirmed',
         createdAt: '2024-01-15T10:30:00Z',
@@ -114,8 +114,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
         }
       },
-      'WC-2024-001235': {
-        id: 'WC-2024-001235',
+      'WIN-2024-001235': {
+        id: 'WIN-2024-001235',
         bookingReference: 'BK-001235',
         status: 'in_progress',
         createdAt: '2024-01-16T14:20:00Z',

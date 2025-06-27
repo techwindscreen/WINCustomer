@@ -47,7 +47,7 @@ const PaymentSuccessPage: React.FC = () => {
       
       // Extract quote ID from URL parameters or use fallback for testing
       const extractedQuoteId = quote_id as string || 
-                              'WC451001NEW'; // Most recent quote with correct price for testing
+                              'WIN451001NEW'; // Most recent quote with correct price for testing
 
       // Only use fallbacks when absolutely no data is provided
       const paymentData = {
@@ -75,7 +75,7 @@ const PaymentSuccessPage: React.FC = () => {
         totalAmount: 15000, // £150.00 total (same as amount for full payment)
         bookingDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Tomorrow
         bookingTime: '10:00 AM - 12:00 PM',
-        quoteId: 'WC-2024-001'
+        quoteId: 'WIN-2024-001'
       });
       setLoading(false);
     }
@@ -273,9 +273,14 @@ const PaymentSuccessPage: React.FC = () => {
             // Pricing breakdown (if available from quote data)
             materialsCost: realQuoteData.materialsCost ? Math.round(realQuoteData.materialsCost * 100) : undefined,
             laborCost: realQuoteData.laborCost ? Math.round(realQuoteData.laborCost * 100) : undefined,
+            serviceFee: realQuoteData.serviceFee ? Math.round(realQuoteData.serviceFee * 100) : undefined,
+            subtotal: realQuoteData.subtotal ? Math.round(realQuoteData.subtotal * 100) : undefined,
+            totalBeforeVAT: realQuoteData.totalBeforeVAT ? Math.round(realQuoteData.totalBeforeVAT * 100) : undefined,
             vatAmount: realQuoteData.vatAmount ? Math.round(realQuoteData.vatAmount * 100) : undefined,
             discountAmount: detectedPaymentType === 'full' && actualTotalAmount > actualAmount ? 
-                           Math.round(actualTotalAmount * 0.05) : undefined
+                           Math.round(actualTotalAmount * 0.05) : undefined,
+            // Pass window damage data if available
+            windowDamage: realQuoteData.windowDamage || undefined
           };
 
           const emailResponse = await fetch('/api/send-payment-confirmation', {

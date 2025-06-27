@@ -89,10 +89,19 @@ async function fetchVehicleValuation(registration: string) {
 // - Front Driver Door: 0.25% × £20,000 = £50  
 // - Rear Window: 0.5% × £20,000 = £100
 // - etc... Total: £540 (+ £30 per window if tinted)
-function calculateMaterialsCost(otrPrice: number | null, selectedWindows: string[], glassColor?: Record<string, string>): number {
+function calculateMaterialsCost(otrPrice: number | null, selectedWindows: string[], glassColor?: Record<string, string>): { totalCost: number, windowBreakdown: WindowCost[] } {
   if (!otrPrice || isNaN(otrPrice)) {
     console.log('OTR price not available, using min materials cost of £70');
-    return 70; // fallback minimum
+    return { 
+      totalCost: 70, 
+      windowBreakdown: [{ 
+        windowId: 'fallback', 
+        name: 'Minimum Glass Cost', 
+        baseCost: 70, 
+        privacyCost: 0, 
+        totalCost: 70 
+      }] 
+    };
   }
 
   // Window type percentage multipliers based on OTR price
@@ -113,37 +122,58 @@ function calculateMaterialsCost(otrPrice: number | null, selectedWindows: string
   } as Record<string, number>;
 
   let totalMaterialsCost = 0;
+  const windowBreakdown: WindowCost[] = [];
 
   if (selectedWindows && Array.isArray(selectedWindows)) {
     for (const windowId of selectedWindows) {
       const percentage = windowOTRPercentages[windowId];
+      const windowName = GLASS_PRICING.windows[windowId as WindowId]?.name || windowId;
+      
       if (percentage) {
         const windowCost = otrPrice * percentage;
-        totalMaterialsCost += windowCost;
         
         // Check for privacy/tinting and add £30 if applicable
         let privacyCost = 0;
         if (glassColor && glassColor[windowId] === 'Tinted Black') {
           privacyCost = 30;
-          totalMaterialsCost += privacyCost;
         }
         
+        const totalWindowCost = windowCost + privacyCost;
+        totalMaterialsCost += totalWindowCost;
+        
+        windowBreakdown.push({
+          windowId,
+          name: windowName,
+          baseCost: Math.round(windowCost * 100) / 100,
+          privacyCost,
+          totalCost: Math.round(totalWindowCost * 100) / 100
+        });
+        
         const privacyNote = privacyCost > 0 ? ` + £${privacyCost} (privacy)` : '';
-        console.log(`Window ${windowId}: ${percentage * 100}% of £${otrPrice} = £${windowCost.toFixed(2)}${privacyNote} = £${(windowCost + privacyCost).toFixed(2)}`);
+        console.log(`Window ${windowId}: ${percentage * 100}% of £${otrPrice} = £${windowCost.toFixed(2)}${privacyNote} = £${totalWindowCost.toFixed(2)}`);
       } else {
         console.log(`Unknown window type: ${windowId}, using default 0.25% of OTR`);
         const windowCost = otrPrice * 0.0025; // Default fallback
-        totalMaterialsCost += windowCost;
         
         // Check for privacy/tinting
         let privacyCost = 0;
         if (glassColor && glassColor[windowId] === 'Tinted Black') {
           privacyCost = 30;
-          totalMaterialsCost += privacyCost;
         }
         
+        const totalWindowCost = windowCost + privacyCost;
+        totalMaterialsCost += totalWindowCost;
+        
+        windowBreakdown.push({
+          windowId,
+          name: windowName,
+          baseCost: Math.round(windowCost * 100) / 100,
+          privacyCost,
+          totalCost: Math.round(totalWindowCost * 100) / 100
+        });
+        
         const privacyNote = privacyCost > 0 ? ` + £${privacyCost} (privacy)` : '';
-        console.log(`Window ${windowId} (unknown): 0.25% of £${otrPrice} = £${windowCost.toFixed(2)}${privacyNote} = £${(windowCost + privacyCost).toFixed(2)}`);
+        console.log(`Window ${windowId} (unknown): 0.25% of £${otrPrice} = £${windowCost.toFixed(2)}${privacyNote} = £${totalWindowCost.toFixed(2)}`);
       }
     }
   }
@@ -152,7 +182,10 @@ function calculateMaterialsCost(otrPrice: number | null, selectedWindows: string
   const finalCost = Math.max(totalMaterialsCost, 70);
   console.log(`Total materials cost: £${totalMaterialsCost.toFixed(2)}, Final cost (min £70): £${finalCost.toFixed(2)}`);
   
-  return Math.round(finalCost * 100) / 100; // Round to 2 dp
+  return {
+    totalCost: Math.round(finalCost * 100) / 100,
+    windowBreakdown
+  };
 }
 
 // Pricing constants for modifiers and add-ons
@@ -212,7 +245,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       glassColor
     } = req.body;
     
-    const quoteId = req.body.quoteId || `WC${Date.now()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+    const quoteId = req.body.quoteId || `WIN${Date.now()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
     
     if (!vehicleDetails?.registration) {
       return res.status(400).json({ message: 'Vehicle registration is required' });
@@ -232,11 +265,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const otrValue = await fetchVehicleValuation(vehicleDetails.registration);
 
     // NEW PRICING STRUCTURE
-    // Fixed labour cost
-    const labourCost = 140;
+    // Base labour cost per window (scales with number of windows)
+    const baseLabourPerWindow = 140;
+    
+    // Calculate total labour cost based on number of windows
+    const numWindows = selectedWindows ? selectedWindows.length : 1;
+    const labourMultiplier = numWindows === 1 ? 1 : 
+                           numWindows === 2 ? 1.6 : 
+                           numWindows === 3 ? 2.0 : 
+                           numWindows >= 4 ? 2.3 : 1;
+    
+    const labourCost = Math.round(baseLabourPerWindow * labourMultiplier);
+    
+    console.log(`Labour calculation: ${numWindows} windows × base £${baseLabourPerWindow} × ${labourMultiplier} multiplier = £${labourCost}`);
     
     // Calculate materials cost based on OTR price and window types
-    let materialsCost = calculateMaterialsCost(otrValue, selectedWindows, glassColor);
+    const materialsResult = calculateMaterialsCost(otrValue, selectedWindows, glassColor);
+    let materialsCost = materialsResult.totalCost;
     
     // Apply specification costs to materials
     let specificationsCost = 0;
@@ -280,12 +325,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Create detailed breakdown for transparency
     const breakdown: PriceBreakdown = {
-      windowCosts: [], // Keep empty for compatibility
+      windowCosts: materialsResult.windowBreakdown, // Include detailed window costs
       specificationCosts: specificationsCost,
       serviceFee: Math.round(serviceFee * 100) / 100,
       glassTypeMultiplier: glassMultiplier,
       baseTotal: Math.round(subtotal * 100) / 100,
-      vehicleBasedPrice: calculateMaterialsCost(otrValue, selectedWindows, glassColor),
+      vehicleBasedPrice: materialsResult.totalCost,
       otrPrice: otrValue
     };
 

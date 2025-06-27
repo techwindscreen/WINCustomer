@@ -37,13 +37,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (error) {
             console.error('Supabase error:', error);
             if (error.code === 'PGRST116') {
-                return res.status(404).json({ message: 'Quote not found' });
+                return res.status(404).json({ 
+                    message: 'Quote not found',
+                    details: 'No quote exists with the provided ID'
+                });
             }
             throw error;
         }
 
+        if (!data) {
+            console.error('No data returned from Supabase for quote:', quoteId);
+            return res.status(404).json({ 
+                message: 'Quote data is empty',
+                details: 'Quote exists but contains no data'
+            });
+        }
+
         console.log('Successfully fetched data for quote:', quoteId);
         console.log('Available fields:', Object.keys(data || {}));
+        console.log('Vehicle reg in raw data:', data.vehicle_reg);
 
         // Helper function to safely parse JSON
         const safeJsonParse = (jsonString: string | null, fallback: any = null) => {
@@ -98,6 +110,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             glassType: data.glass_type || null,
             adasCalibration: data.adas_calibration || null
         };
+
+        // Log potential data issues for debugging
+        if (!transformedData.vehicleReg) {
+            console.warn('Quote data missing vehicle_reg:', {
+                quoteId: data.quote_id,
+                hasVehicleReg: !!data.vehicle_reg,
+                allFields: Object.keys(data)
+            });
+        }
+
+        if (!transformedData.selectedWindows || transformedData.selectedWindows.length === 0) {
+            console.warn('Quote data missing selectedWindows:', {
+                quoteId: data.quote_id,
+                selectedWindows: data.selected_windows,
+                hasSelectedWindows: !!data.selected_windows
+            });
+        }
 
         return res.status(200).json({
             success: true,

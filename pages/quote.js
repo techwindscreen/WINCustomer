@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 
 // Dynamically import QuotePage to avoid SSR issues
-const QuotePage = dynamic(() => import('../components/QuotePage'), {
+const QuotePage = dynamic(() => import('../components/pages/QuotePage'), {
   ssr: false,
   loading: () => (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

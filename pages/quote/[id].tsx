@@ -70,11 +70,20 @@ export default function QuoteDetailsPage() {
       setLoading(true);
       const response = await fetch(`/api/quotes/${quoteId}`);
       
+      const responseText = await response.text();
+      
       if (!response.ok) {
+        console.error('Quote API error response:', responseText);
         throw new Error('Quote not found');
       }
       
-      const data = await response.json();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Failed to parse JSON response:', responseText);
+        throw new Error('Invalid response from server');
+      }
       setQuoteData(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load quote');

@@ -227,7 +227,7 @@ export default function QuoteDetailsPage() {
                   id="quoteId"
                   value={quoteId}
                   onChange={(e) => setQuoteId(e.target.value)}
-                  placeholder="Enter your Quote ID (e.g., WC-2024-001234)"
+                  placeholder="Enter your Quote ID (e.g., WIN-2024-001234)"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0FB8C1] focus:border-transparent"
                 />
               </div>

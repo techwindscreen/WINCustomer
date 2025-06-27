@@ -1,5 +1,5 @@
 import React from 'react'
-import ContactDetails from '../components/ContactInfo'
+import ContactDetails from '../components/pages/ContactInfo'
 
 export default function ContactDetailsPage() {
   // You might want to fetch the vehicleReg from a global state or URL parameter
