@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { loadStripe, Appearance } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { Footer } from '../sections/Footer';
 
 // Initialize Stripe
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
@@ -191,7 +192,7 @@ const QuotePage: React.FC = () => {
     null
   );
   
-  const [adasCalibration, setAdasCalibration] = useState<'yes' | 'no' | null>(null);
+
   
   // Add mounted state to prevent hydration mismatch
   const [isMounted, setIsMounted] = useState(false);
@@ -244,10 +245,10 @@ const QuotePage: React.FC = () => {
     }
     
     // Update quote settings in database
-    updateQuoteSettings(type, adasCalibration);
+    updateQuoteSettings(type, null);
   };
 
-  const updateQuoteSettings = async (glassType: 'OEM' | 'OEE' | null, adasCalibration: 'yes' | 'no' | null) => {
+  const updateQuoteSettings = async (glassType: 'OEM' | 'OEE' | null) => {
     try {
       const dataToUse = fetchedQuoteData || parsedData;
       const quoteID = router.query.quoteID || dataToUse.quoteID;
@@ -260,8 +261,7 @@ const QuotePage: React.FC = () => {
           },
           body: JSON.stringify({
             quoteId: quoteID,
-            glassType: glassType,
-            adasCalibration: adasCalibration
+            glassType: glassType
           }),
         });
       }
@@ -678,12 +678,9 @@ const QuotePage: React.FC = () => {
         });
       }
       
-      // Update glass type and ADAS calibration from fetched data
+      // Update glass type from fetched data
       if (fetchedQuoteData.glassType) {
         setGlassType(fetchedQuoteData.glassType);
-      }
-      if (fetchedQuoteData.adasCalibration) {
-        setAdasCalibration(fetchedQuoteData.adasCalibration);
       }
       
       // Trigger quote calculation for magic links after data is loaded
@@ -711,15 +708,14 @@ const QuotePage: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          amount: currentPrice,
-          vehicleReg: dataToUse.vehicleReg,
-          selectedWindows: dataToUse.selectedWindows,
-          specifications: dataToUse.specifications,
-          glassType: glassType, // Add the glass type to the checkout session
-          selectedCompany: selectedBusiness, // Add the selected company
-          adasCalibration: adasCalibration // Add ADAS calibration preference
-        }),
+                  body: JSON.stringify({
+            amount: currentPrice,
+            vehicleReg: dataToUse.vehicleReg,
+            selectedWindows: dataToUse.selectedWindows,
+            specifications: dataToUse.specifications,
+            glassType: glassType, // Add the glass type to the checkout session
+            selectedCompany: selectedBusiness // Add the selected company
+          }),
       });
 
       const responseText = await response.text();
@@ -937,20 +933,27 @@ const QuotePage: React.FC = () => {
       <header className="bg-white py-4 px-4 border-b shadow-sm">
         <div className="container mx-auto">
           <div className="flex items-center justify-between">
-            <div className="relative w-[200px] sm:w-[300px] h-[60px] sm:h-[90px]">
-              <Image
-                src="/WCLOGO.jpg"
-                alt="Windscreen Compare Logo"
-                width={250}
-                height={600}
-                style={{
-                  objectFit: 'contain',
-                  width: '100%',
-                  height: '100%',
-                }}
-                priority
-              />
-            </div>
+            <a
+              href="https://windscreencompare.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block focus:outline-none focus:ring-2 focus:ring-[#0FB8C1] rounded"
+            >
+              <div className="relative w-[120px] sm:w-[180px] h-[36px] sm:h-[60px]">
+                <Image
+                  src="/WCLOGO.jpg"
+                  alt="Windscreen Compare Logo"
+                  width={180}
+                  height={60}
+                  style={{
+                    objectFit: 'contain',
+                    width: '100%',
+                    height: '100%',
+                  }}
+                  priority
+                />
+              </div>
+            </a>
             <div className="hidden md:block">
               <p className="text-gray-600">Need help? Call us at</p>
               <p className="text-[#0FB8C1] font-bold text-xl">+44 20 3882 8574</p>
@@ -959,6 +962,21 @@ const QuotePage: React.FC = () => {
         </div>
       </header>
 
+      {/* Back Button (Mobile & Desktop) */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="container mx-auto px-4 py-3 flex">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center text-[#0FB8C1] hover:text-[#0DA6AE] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#0FB8C1] rounded mb-2 md:mb-0"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+            </svg>
+            <span className="font-medium">Back to Edit Details</span>
+          </button>
+        </div>
+      </div>
+
       {/* Main Content */}
       <main className="flex-grow">
         <div className="container mx-auto px-4 py-4 sm:py-8 max-w-7xl">
@@ -966,16 +984,16 @@ const QuotePage: React.FC = () => {
             <h2 className="text-2xl sm:text-3xl font-bold w-full sm:w-[200px] mb-4 sm:mb-0">Quote</h2>
             
             <div className="flex-1 flex items-center justify-center w-full sm:w-auto">
-              <div className="flex items-center justify-center w-full sm:w-[600px]">
+              <div className="flex items-center justify-center w-full max-w-[600px] mx-auto">
                 {[1, 2, 3, 4].map((step) => (
                   <div key={step} className="flex items-center flex-1">
                     <div className="flex flex-col items-center relative">
-                      <div className={`rounded-full h-8 w-8 flex items-center justify-center border-2 bg-white z-10 ${
+                      <div className={`rounded-full h-6 w-6 sm:h-8 sm:w-8 flex items-center justify-center border-2 bg-white z-10 text-xs sm:text-sm ${
                         step <= 4 ? 'border-[#0FB8C1] text-[#0FB8C1]' : 'border-gray-300 text-gray-300'
                       }`}>
                         {step}
                       </div>
-                      <span className="text-xs text-gray-500 mt-1 absolute -bottom-6 w-max">
+                      <span className="text-xs text-gray-500 mt-1 absolute -bottom-5 sm:-bottom-6 w-max left-1/2 transform -translate-x-1/2">
                         {step === 1 ? 'Vehicle' : 
                          step === 2 ? 'Damage' : 
                          step === 3 ? 'Details' : 
@@ -983,7 +1001,7 @@ const QuotePage: React.FC = () => {
                       </span>
                     </div>
                     {step < 4 && (
-                      <div className={`h-[2px] flex-1 ${
+                      <div className={`h-[1px] sm:h-[2px] flex-1 ${
                         step <= 4 ? 'bg-[#0FB8C1]' : 'bg-gray-300'
                       }`} />
                     )}
@@ -1041,41 +1059,41 @@ const QuotePage: React.FC = () => {
                       <h3 className="text-2xl font-bold text-gray-800 mb-6">Compare Local Technician Quotes</h3>
                       
                       {/* Glass Type Selection */}
-                      <div className="bg-gray-50 rounded-xl p-4 mb-6">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-semibold text-gray-700">Glass Type</h4>
-                          <div className="text-sm text-gray-500">Select your preferred glass type</div>
+                      <div className="bg-gray-50 rounded-xl p-3 sm:p-4 mb-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-2">
+                          <h4 className="font-semibold text-gray-700 text-base sm:text-lg mb-1 sm:mb-0">Glass Type</h4>
+                          <div className="text-xs sm:text-sm text-gray-500">Select your preferred glass type</div>
                         </div>
-                        <div className="flex space-x-4">
+                        <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
                           <button
                             onClick={() => handleGlassTypeChange('OEE')}
-                            className={`flex-1 relative py-2 px-4 rounded-lg transition-all ${
+                            className={`flex-1 relative py-3 sm:py-2 px-3 sm:px-4 rounded-lg transition-all ${
                               glassType === 'OEE'
                                 ? 'bg-[#0FB8C1] text-white shadow-md'
                                 : 'bg-white border border-gray-300 text-gray-700 hover:border-[#0FB8C1]'
                             }`}
                           >
-                            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                              <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium">
+                            <div className="absolute -top-2 sm:-top-3 left-1/2 transform -translate-x-1/2">
+                              <span className="bg-green-100 text-green-700 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs font-medium">
                                 Recommended
                               </span>
                             </div>
-                            <div className="font-medium mt-1">OEE Glass</div>
+                            <div className="font-medium mt-1 text-sm sm:text-base">OEE Glass</div>
                             <div className="text-xs mt-1 opacity-80">Original Equipment Equivalent</div>
                           </button>
                           <button
                             onClick={() => handleGlassTypeChange('OEM')}
-                            className={`flex-1 py-2 px-4 rounded-lg transition-all ${
+                            className={`flex-1 py-3 sm:py-2 px-3 sm:px-4 rounded-lg transition-all ${
                               glassType === 'OEM'
                                 ? 'bg-[#0FB8C1] text-white shadow-md'
                                 : 'bg-white border border-gray-300 text-gray-700 hover:border-[#0FB8C1]'
                             }`}
                           >
-                            <div className="font-medium">OEM Glass</div>
+                            <div className="font-medium text-sm sm:text-base">OEM Glass</div>
                             <div className="text-xs mt-1 opacity-80">Original Equipment Manufacturer</div>
                           </button>
                         </div>
-                        <div className="mt-2 text-xs text-gray-500">
+                        <div className="mt-3 sm:mt-2 text-xs text-gray-500">
                           {glassType === 'OEE' 
                             ? 'OEE glass is manufactured to the same standards as OEM glass but by alternative suppliers, offering good value.'
                             : glassType === 'OEM'
@@ -1084,68 +1102,7 @@ const QuotePage: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* ADAS Calibration Selection */}
-                      {glassType && (
-                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-6 mb-6 shadow-sm">
-                          <div className="flex items-center justify-center mb-4">
-                            <div className="flex items-center">
-                              <h4 className="text-lg font-semibold text-gray-800">Are you interested in ADAS Calibration?</h4>
-                              <div className="relative group ml-3">
-                                <div className="w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center cursor-help shadow-md border-2 border-blue-200">
-                                  <svg className="w-4 h-4 text-white font-bold" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                                  </svg>
-                                </div>
-                                <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs rounded-lg py-3 px-4 w-72 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10 shadow-lg">
-                                  <div className="text-center leading-relaxed">
-                                    Modern vehicles have safety systems (lane assist, automatic braking, etc.) that rely on cameras behind the windscreen. After replacement, these systems need recalibration to work properly and keep you safe.
-                                  </div>
-                                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div className="flex space-x-4 max-w-sm mx-auto">
-                            <button
-                              onClick={() => {
-                                setAdasCalibration('yes');
-                                updateQuoteSettings(glassType, 'yes');
-                              }}
-                              className={`flex-1 py-3 px-6 rounded-xl text-sm font-semibold transition-all duration-200 transform hover:scale-105 ${
-                                adasCalibration === 'yes'
-                                  ? 'bg-[#0FB8C1] text-white shadow-lg'
-                                  : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-[#0FB8C1] hover:text-[#0FB8C1] shadow-sm'
-                              }`}
-                            >
-                              <div className="flex items-center justify-center">
-                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                                </svg>
-                                Yes, I'm interested
-                              </div>
-                            </button>
-                            <button
-                              onClick={() => {
-                                setAdasCalibration('no');
-                                updateQuoteSettings(glassType, 'no');
-                              }}
-                              className={`flex-1 py-3 px-6 rounded-xl text-sm font-semibold transition-all duration-200 transform hover:scale-105 ${
-                                adasCalibration === 'no'
-                                  ? 'bg-gray-600 text-white shadow-lg'
-                                  : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-gray-400 hover:text-gray-800 shadow-sm'
-                              }`}
-                            >
-                              <div className="flex items-center justify-center">
-                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                                No, not needed
-                              </div>
-                            </button>
-                          </div>
-                        </div>
-                      )}
+
 
                       {/* Message to remind users to select glass type */}
                       {!glassType && (
@@ -1240,225 +1197,206 @@ const QuotePage: React.FC = () => {
                                 </div>
                               </div>
 
-                              {/* Glass Type Info */}
-                              {glassType && (
-                                <div className="text-xs text-gray-600 bg-blue-50 rounded-md p-2">
-                                  {glassType} Glass - Professional Installation
-                                </div>
-                              )}
-                            </div>
-                          </div>
+                              {/* Service Summary Section */}
+                              <div className="border-t border-gray-200 pt-6">
 
-                          {/* COMMENTED OUT: Company Comparison Section - can be restored later if needed */}
-
-                          {/* Enhanced Service & Pricing Overview Box */}
-                          <div className="max-w-md mx-auto bg-white rounded-xl p-6 mb-8 border-2 border-[#0FB8C1]/20 shadow-lg">
-                            <div className="flex items-center gap-3 mb-6">
-                              <div className="w-8 h-8 bg-[#0FB8C1] rounded-full flex items-center justify-center">
-                                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012-2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                                </svg>
-                              </div>
-                              <h3 className="text-lg font-semibold text-gray-900">Service Summary</h3>
-                            </div>
-
-                            {/* Selected Windows Overview */}
-                            {(fetchedQuoteData || parsedData)?.selectedWindows && (
-                              <div className="mb-6 bg-blue-50 rounded-lg p-4">
-                                <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                                  <svg className="w-4 h-4 text-[#0FB8C1]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                  </svg>
-                                  Glass Services Included:
-                                </h4>
-                                <div className="space-y-2">
-                                  {(fetchedQuoteData || parsedData).selectedWindows?.map((windowId: string) => {
-                                    const windowName = getWindowDisplayName(windowId);
-                                    const damageType = (fetchedQuoteData || parsedData).windowDamage?.[windowId];
-                                    const glassColor = (fetchedQuoteData || parsedData).glassColor?.[windowId];
+                                {/* Selected Windows Overview */}
+                                {(fetchedQuoteData || parsedData)?.selectedWindows && (
+                                  <div className="mb-4 bg-blue-50 rounded-lg p-3">
+                                    <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                                      <svg className="w-3 h-3 text-[#0FB8C1]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                      </svg>
+                                      Glass Services Included:
+                                    </h4>
+                                    <div className="space-y-1">
+                                      {(fetchedQuoteData || parsedData).selectedWindows?.map((windowId: string) => {
+                                        const windowName = getWindowDisplayName(windowId);
+                                        const damageType = (fetchedQuoteData || parsedData).windowDamage?.[windowId];
+                                        const glassColor = (fetchedQuoteData || parsedData).glassColor?.[windowId];
+                                        
+                                        return (
+                                          <div key={windowId} className="flex items-center justify-between text-xs bg-white rounded-md p-2 border">
+                                            <div className="flex flex-col">
+                                              <span className="font-medium text-gray-800">{windowName}</span>
+                                              <div className="flex gap-1 text-xs text-gray-600">
+                                                {damageType && (
+                                                  <span className="bg-red-100 text-red-700 px-1 py-0.5 rounded text-xs">
+                                                    {damageType}
+                                                  </span>
+                                                )}
+                                                {glassColor && glassColor !== 'Manufacturer Standard' && (
+                                                  <span className="bg-purple-100 text-purple-700 px-1 py-0.5 rounded text-xs">
+                                                    {glassColor}
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </div>
+                                            <div className="text-xs text-green-700 bg-green-100 px-1 py-0.5 rounded font-medium">
+                                              {damageType === 'Chipped' ? 'Repair' : 'Replace'}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
                                     
-                                    return (
-                                      <div key={windowId} className="flex items-center justify-between text-sm bg-white rounded-md p-2 border">
-                                        <div className="flex flex-col">
-                                          <span className="font-medium text-gray-800">{windowName}</span>
-                                          <div className="flex gap-2 text-xs text-gray-600">
-                                            {damageType && (
-                                              <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded">
-                                                {damageType}
+                                    {/* Glass Type & Features */}
+                                    <div className="mt-2 pt-2 border-t border-blue-200">
+                                      <div className="flex items-center justify-between text-xs">
+                                        <span className="text-gray-600">Glass Type:</span>
+                                        <span className="font-medium text-[#0FB8C1]">
+                                          {glassType || 'OEE'} Glass {glassType === 'OEM' ? '(Premium)' : '(Standard)'}
+                                        </span>
+                                      </div>
+                                      {(fetchedQuoteData || parsedData)?.specifications?.length > 0 && (
+                                        <div className="flex items-start justify-between text-xs mt-1">
+                                          <span className="text-gray-600">Features:</span>
+                                          <div className="flex flex-wrap gap-1 max-w-24">
+                                            {(fetchedQuoteData || parsedData).specifications.map((spec: string) => (
+                                              <span key={spec} className="text-xs bg-gray-100 text-gray-700 px-1 py-0.5 rounded">
+                                                {spec}
                                               </span>
-                                            )}
-                                            {glassColor && glassColor !== 'Manufacturer Standard' && (
-                                              <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded">
-                                                {glassColor}
-                                              </span>
-                                            )}
+                                            ))}
                                           </div>
                                         </div>
-                                        <div className="text-xs text-green-700 bg-green-100 px-2 py-1 rounded font-medium">
-                                          {damageType === 'Chipped' ? 'Repair' : 'Replace'}
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                                
-                                {/* Glass Type & Features */}
-                                <div className="mt-3 pt-3 border-t border-blue-200">
-                                  <div className="flex items-center justify-between text-sm">
-                                    <span className="text-gray-600">Glass Type:</span>
-                                    <span className="font-medium text-[#0FB8C1]">
-                                      {glassType || 'OEE'} Glass {glassType === 'OEM' ? '(Premium)' : '(Standard)'}
-                                    </span>
-                                  </div>
-                                  {(fetchedQuoteData || parsedData)?.specifications?.length > 0 && (
-                                    <div className="flex items-start justify-between text-sm mt-2">
-                                      <span className="text-gray-600">Features:</span>
-                                      <div className="flex flex-wrap gap-1 max-w-32">
-                                        {(fetchedQuoteData || parsedData).specifications.map((spec: string) => (
-                                          <span key={spec} className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
-                                            {spec}
-                                          </span>
-                                        ))}
-                                      </div>
+                                      )}
                                     </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
+                                  </div>
+                                )}
 
-                            {/* Price Breakdown */}
-                            <button
-                              onClick={() => setIsQuoteDetailsCollapsed(!isQuoteDetailsCollapsed)}
-                              className="w-full flex items-center justify-between text-left mb-4"
-                            >
-                              <span className="font-semibold text-gray-900">Price Breakdown</span>
-                              <svg
-                                className={`w-5 h-5 transform transition-transform ${isQuoteDetailsCollapsed ? 'rotate-180' : ''}`}
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </button>
+                                {/* Price Breakdown */}
+                                <button
+                                  onClick={() => setIsQuoteDetailsCollapsed(!isQuoteDetailsCollapsed)}
+                                  className="w-full flex items-center justify-between text-left mb-3"
+                                >
+                                  <span className="font-semibold text-gray-900 text-sm">Price Breakdown</span>
+                                  <svg
+                                    className={`w-4 h-4 transform transition-transform ${isQuoteDetailsCollapsed ? 'rotate-180' : ''}`}
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                  </svg>
+                                </button>
 
-                            {!isQuoteDetailsCollapsed && (
-                              <div className="space-y-3 text-sm">
-                                {/* Labor Breakdown */}
-                                <div className="bg-gray-50 rounded-lg p-3">
-                                  <div className="flex justify-between items-center mb-2">
-                                    <span className="font-medium text-gray-700">Labor & Service</span>
-                                    {displayPriceValue(labourCost)}
-                                  </div>
-                                  <div className="text-xs text-gray-600 space-y-1">
-                                    {/* Show multiple windows notice */}
-                                    {(fetchedQuoteData || parsedData)?.selectedWindows && (fetchedQuoteData || parsedData).selectedWindows.length > 1 && (
-                                      <div className="flex justify-between font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                                        <span>• Multiple Windows ({(fetchedQuoteData || parsedData).selectedWindows.length})</span>
-                                        <span>Extended Service</span>
+                                {!isQuoteDetailsCollapsed && (
+                                  <div className="space-y-2 text-xs">
+                                    {/* Labor Breakdown */}
+                                    <div className="bg-gray-50 rounded-lg p-2">
+                                      <div className="flex justify-between items-center mb-1">
+                                        <span className="font-medium text-gray-700">Labor & Service</span>
+                                        {displayPriceValue(labourCost)}
                                       </div>
-                                    )}
-                                    <div className="flex justify-between">
-                                      <span>• Professional Installation</span>
-                                      <span>£{Math.round(parseFloat(labourCost) * 0.7).toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span>• Mobile Service & Tools</span>
-                                      <span>£{Math.round(parseFloat(labourCost) * 0.2).toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span>• Quality Assurance</span>
-                                      <span>£{Math.round(parseFloat(labourCost) * 0.1).toFixed(2)}</span>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Materials Breakdown */}
-                                <div className="bg-gray-50 rounded-lg p-3">
-                                  <div className="flex justify-between items-center mb-2">
-                                    <span className="font-medium text-gray-700">Materials & Glass</span>
-                                    {displayPriceValue(materialsCost)}
-                                  </div>
-                                  <div className="text-xs text-gray-600 space-y-1">
-                                    {/* Show individual window costs if available */}
-                                    {baseQuoteData?.windowBreakdown && baseQuoteData.windowBreakdown.length > 0 ? (
-                                      baseQuoteData.windowBreakdown.map((window: WindowCost) => (
-                                        <div key={window.windowId} className="flex justify-between">
-                                          <span>• {window.name}</span>
-                                          <span>£{window.totalCost}</span>
-                                        </div>
-                                      ))
-                                    ) : (
-                                      <>
+                                      <div className="text-xs text-gray-600 space-y-0.5">
+                                        {/* Show multiple windows notice */}
+                                        {(fetchedQuoteData || parsedData)?.selectedWindows && (fetchedQuoteData || parsedData).selectedWindows.length > 1 && (
+                                          <div className="flex justify-between font-medium text-blue-600 bg-blue-50 px-1 py-0.5 rounded text-xs">
+                                            <span>• Multiple Windows ({(fetchedQuoteData || parsedData).selectedWindows.length})</span>
+                                            <span>Extended Service</span>
+                                          </div>
+                                        )}
                                         <div className="flex justify-between">
-                                          <span>• Glass & Sealants</span>
-                                          <span>£{Math.round(parseFloat(materialsCost) * 0.8).toFixed(2)}</span>
+                                          <span>• Professional Installation</span>
+                                          <span>£{Math.round(parseFloat(labourCost) * 0.7).toFixed(2)}</span>
                                         </div>
                                         <div className="flex justify-between">
-                                          <span>• Installation Materials</span>
-                                          <span>£{Math.round(parseFloat(materialsCost) * 0.2).toFixed(2)}</span>
+                                          <span>• Mobile Service & Tools</span>
+                                          <span>£{Math.round(parseFloat(labourCost) * 0.2).toFixed(2)}</span>
                                         </div>
-                                      </>
-                                    )}
-                                    {glassType === 'OEM' && (
-                                      <div className="flex justify-between font-medium text-orange-600">
-                                        <span>• Premium Glass Upgrade (+40%)</span>
-                                        <span>+£{Math.round((parseFloat(materialsCost) * 0.4) * 100) / 100}</span>
+                                        <div className="flex justify-between">
+                                          <span>• Quality Assurance</span>
+                                          <span>£{Math.round(parseFloat(labourCost) * 0.1).toFixed(2)}</span>
+                                        </div>
                                       </div>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* Other Costs */}
-                                <div className="space-y-2">
-                                  <div className="flex justify-between">
-                                    <span>Service Fee (20%)</span>
-                                    {displayPriceValue(serviceFee)}
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span>Subtotal</span>
-                                    {displayPriceValue(totalBeforeVAT)}
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span>VAT (20%)</span>
-                                    {displayPriceValue(vat)}
-                                  </div>
-                                  {deliveryType === 'express' && (
-                                    <div className="flex justify-between text-orange-600">
-                                      <span>Express Service</span>
-                                      <span>+£90.00</span>
                                     </div>
-                                  )}
-                                </div>
 
-                                <div className="pt-3 border-t border-gray-200">
-                                  <div className="flex justify-between font-bold text-lg">
-                                    <span>Total (inc. VAT)</span>
-                                    {displayPriceValue(totalIncVat)}
+                                    {/* Materials Breakdown */}
+                                    <div className="bg-gray-50 rounded-lg p-2">
+                                      <div className="flex justify-between items-center mb-1">
+                                        <span className="font-medium text-gray-700">Materials & Glass</span>
+                                        {displayPriceValue(materialsCost)}
+                                      </div>
+                                      <div className="text-xs text-gray-600 space-y-0.5">
+                                        {/* Show individual window costs if available */}
+                                        {baseQuoteData?.windowBreakdown && baseQuoteData.windowBreakdown.length > 0 ? (
+                                          baseQuoteData.windowBreakdown.map((window: WindowCost) => (
+                                            <div key={window.windowId} className="flex justify-between">
+                                              <span>• {window.name}</span>
+                                              <span>£{window.totalCost}</span>
+                                            </div>
+                                          ))
+                                        ) : (
+                                          <>
+                                            <div className="flex justify-between">
+                                              <span>• Glass & Sealants</span>
+                                              <span>£{Math.round(parseFloat(materialsCost) * 0.8).toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                              <span>• Installation Materials</span>
+                                              <span>£{Math.round(parseFloat(materialsCost) * 0.2).toFixed(2)}</span>
+                                            </div>
+                                          </>
+                                        )}
+                                        {glassType === 'OEM' && (
+                                          <div className="flex justify-between font-medium text-orange-600">
+                                            <span>• Premium Glass Upgrade (+40%)</span>
+                                            <span>+£{Math.round((parseFloat(materialsCost) * 0.4) * 100) / 100}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {/* Other Costs */}
+                                    <div className="space-y-1">
+                                      <div className="flex justify-between">
+                                        <span>Service Fee (20%)</span>
+                                        {displayPriceValue(serviceFee)}
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span>Subtotal</span>
+                                        {displayPriceValue(totalBeforeVAT)}
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span>VAT (20%)</span>
+                                        {displayPriceValue(vat)}
+                                      </div>
+                                      {deliveryType === 'express' && (
+                                        <div className="flex justify-between text-orange-600">
+                                          <span>Express Service</span>
+                                          <span>+£90.00</span>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    <div className="pt-2 border-t border-gray-200">
+                                      <div className="flex justify-between font-bold text-sm">
+                                        <span>Total (inc. VAT)</span>
+                                        {displayPriceValue(totalIncVat)}
+                                      </div>
+                                    </div>
                                   </div>
-                                </div>
+                                )}
                               </div>
-                            )}
-
-
+                            </div>
                           </div>
 
 
 
                           {/* Payment Options */}
                           <div className="mb-8">
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                               {/* Pay in Full Option */}
                               <button
                                 onClick={() => setPaymentType('full')}
-                                className={`relative p-5 rounded-xl border-2 transition-all hover:shadow-md ${
+                                className={`relative p-3 sm:p-4 lg:p-5 rounded-xl border-2 transition-all hover:shadow-md ${
                                   paymentType === 'full'
                                     ? 'border-[#0FB8C1] bg-[#F8FDFD]'
                                     : 'border-gray-200 hover:border-gray-300'
                                 }`}
                               >
-                                <div className="absolute -top-3 left-4">
-                                  <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium">
+                                <div className="absolute -top-2 sm:-top-3 left-2 sm:left-4">
+                                  <span className="bg-green-100 text-green-700 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs font-medium">
                                     Save 5%
                                   </span>
                                 </div>
@@ -1469,8 +1407,8 @@ const QuotePage: React.FC = () => {
                                     </svg>
                                     <div className="font-semibold text-gray-800">Pay in Full</div>
                                   </div>
-                                  <div className="text-sm text-gray-500 mb-3">One-time payment</div>
-                                  <div className="text-2xl font-bold text-gray-800 mb-1">
+                                  <div className="text-xs sm:text-sm text-gray-500 mb-2 sm:mb-3">One-time payment</div>
+                                  <div className="text-xl sm:text-2xl font-bold text-gray-800 mb-1">
                                     {!glassType 
                                       ? <div className="h-8 w-28 bg-gray-200 animate-pulse rounded-md"></div>
                                       : `£${fullPaymentPrice}`}
@@ -1486,14 +1424,14 @@ const QuotePage: React.FC = () => {
                               {/* Pay Deposit Option */}
                               <button
                                 onClick={() => setPaymentType('deposit')}
-                                className={`relative p-5 rounded-xl border-2 transition-all hover:shadow-md ${
+                                className={`relative p-3 sm:p-4 lg:p-5 rounded-xl border-2 transition-all hover:shadow-md ${
                                   paymentType === 'deposit'
                                     ? 'border-[#0FB8C1] bg-[#F8FDFD]'
                                     : 'border-gray-200 hover:border-gray-300'
                                 }`}
                               >
-                                <div className="absolute -top-3 left-4">
-                                  <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">
+                                <div className="absolute -top-2 sm:-top-3 left-2 sm:left-4">
+                                  <span className="bg-blue-100 text-blue-700 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs font-medium">
                                     Most Popular
                                   </span>
                                 </div>
@@ -1504,8 +1442,8 @@ const QuotePage: React.FC = () => {
                                     </svg>
                                     <div className="font-semibold text-gray-800">Pay Deposit</div>
                                   </div>
-                                  <div className="text-sm text-gray-500 mb-3">20% now, rest on completion</div>
-                                  <div className="text-2xl font-bold text-gray-800 mb-1">
+                                  <div className="text-xs sm:text-sm text-gray-500 mb-2 sm:mb-3">20% now, rest on completion</div>
+                                  <div className="text-xl sm:text-2xl font-bold text-gray-800 mb-1">
                                     {!glassType 
                                       ? <div className="h-8 w-28 bg-gray-200 animate-pulse rounded-md"></div>
                                       : `£${depositPaymentPrice}`}
@@ -1521,14 +1459,14 @@ const QuotePage: React.FC = () => {
                               {/* Split Payment Option */}
                               <button
                                 onClick={() => setPaymentType('split')}
-                                className={`relative p-5 rounded-xl border-2 transition-all hover:shadow-md ${
+                                className={`relative p-3 sm:p-4 lg:p-5 rounded-xl border-2 transition-all hover:shadow-md ${
                                   paymentType === 'split'
                                     ? 'border-[#0FB8C1] bg-[#F8FDFD]'
                                     : 'border-gray-200 hover:border-gray-300'
                                 }`}
                               >
-                                <div className="absolute -top-3 left-4">
-                                  <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-medium">
+                                <div className="absolute -top-2 sm:-top-3 left-2 sm:left-4">
+                                  <span className="bg-purple-100 text-purple-700 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs font-medium">
                                     0% Interest
                                   </span>
                                 </div>
@@ -1539,8 +1477,8 @@ const QuotePage: React.FC = () => {
                                     </svg>
                                     <div className="font-semibold text-gray-800">Split Payment</div>
                                   </div>
-                                  <div className="text-sm text-gray-500 mb-3">3 monthly payments</div>
-                                  <div className="text-2xl font-bold text-gray-800 mb-1">
+                                  <div className="text-xs sm:text-sm text-gray-500 mb-2 sm:mb-3">3 monthly payments</div>
+                                  <div className="text-xl sm:text-2xl font-bold text-gray-800 mb-1">
                                     {!glassType 
                                       ? <div className="h-8 w-28 bg-gray-200 animate-pulse rounded-md"></div>
                                       : `£${splitPaymentPrice}`}
@@ -1810,6 +1748,33 @@ const QuotePage: React.FC = () => {
                       </div>
                     </div>
                     <div>
+                      <p className="text-sm text-gray-500 mb-1">Vehicle Description</p>
+                      <div className="bg-blue-100 text-blue-800 px-3 py-2 rounded-lg text-sm font-semibold">
+                          {(fetchedQuoteData || parsedData).vehicleDetails?.manufacturer && (fetchedQuoteData || parsedData).vehicleDetails?.model 
+                            ? `${(fetchedQuoteData || parsedData).vehicleDetails.manufacturer} ${(fetchedQuoteData || parsedData).vehicleDetails.model} ${(fetchedQuoteData || parsedData).vehicleDetails.year || ''}`
+                            : (fetchedQuoteData || parsedData).vehicleDetails?.description || 'Vehicle details not available'}
+                      </div>
+                      {(fetchedQuoteData || parsedData).vehicleDetails?.type && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {(fetchedQuoteData || parsedData).vehicleDetails?.doorPlan && (
+                            <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs">
+                              {(fetchedQuoteData || parsedData).vehicleDetails.doorPlan}
+                            </span>
+                          )}
+                          {(fetchedQuoteData || parsedData).vehicleDetails?.type && (
+                            <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs">
+                              {(fetchedQuoteData || parsedData).vehicleDetails.type}
+                            </span>
+                          )}
+                          {(fetchedQuoteData || parsedData).vehicleDetails?.colour && (
+                            <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs">
+                              {(fetchedQuoteData || parsedData).vehicleDetails.colour}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div>
                       <p className="text-sm text-gray-500 mb-1">Selected Damage</p>
                       <div className="flex flex-wrap gap-2">
                           {(fetchedQuoteData || parsedData).selectedWindows.length ? (
@@ -1822,6 +1787,16 @@ const QuotePage: React.FC = () => {
                           <span className="italic text-gray-500">No windows selected</span>
                         )}
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Uploaded Images Section */}
+                  <div className="pt-6 border-t">
+                    <p className="text-sm text-gray-500 mb-1">Uploaded Images</p>
+                    <div className="bg-blue-100 text-blue-800 px-3 py-2 rounded-lg text-sm font-semibold">
+                      {(fetchedQuoteData || parsedData).uploadedImages && (fetchedQuoteData || parsedData).uploadedImages.length > 0 
+                        ? `${(fetchedQuoteData || parsedData).uploadedImages.length} image(s) uploaded`
+                        : 'No images uploaded'}
                     </div>
                   </div>
 
@@ -1965,6 +1940,22 @@ const QuotePage: React.FC = () => {
                           <div className="bg-blue-100 text-blue-800 px-3 py-2 rounded-lg text-sm font-semibold">
                               {(fetchedQuoteData || parsedData).insuranceDetails.incidentDate}
                           </div>
+                          {(() => {
+                            const incidentDate = new Date((fetchedQuoteData || parsedData).insuranceDetails.incidentDate);
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            if (incidentDate >= today) {
+                              return (
+                                <div className="mt-1 text-xs text-red-600 flex items-center">
+                                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                  </svg>
+                                  Incident date must be in the past
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
                         </div>
                         <div>
                           <p className="text-sm text-gray-500 mb-1">Policy Excess Amount</p>
@@ -1977,6 +1968,22 @@ const QuotePage: React.FC = () => {
                           <div className="bg-blue-100 text-blue-800 px-3 py-2 rounded-lg text-sm font-semibold">
                               {(fetchedQuoteData || parsedData).insuranceDetails.expiryDate || (fetchedQuoteData || parsedData).insuranceDetails.policyExpiryDate}
                           </div>
+                          {(() => {
+                            const expiryDate = new Date((fetchedQuoteData || parsedData).insuranceDetails.expiryDate || (fetchedQuoteData || parsedData).insuranceDetails.policyExpiryDate);
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            if (expiryDate <= today) {
+                              return (
+                                <div className="mt-1 text-xs text-red-600 flex items-center">
+                                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                  </svg>
+                                  Policy expiry date must be in the future
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
                         </div>
                       </div>
                     )}
@@ -2132,24 +2139,7 @@ const QuotePage: React.FC = () => {
         </div>
       </main>
 
-      {/* Enhanced Footer */}
-      <footer className="bg-gray-800 text-white py-12 mt-12">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <h3 className="font-bold mb-4 text-[#0FB8C1]">INFO</h3>
-              <ul className="space-y-2 text-sm">
-                <li><Link href="#" className="hover:text-[#0FB8C1] transition">Windscreen Replacement</Link></li>
-                <li><Link href="#" className="hover:text-[#0FB8C1] transition">Car Manufacturers</Link></li>
-              </ul>
-            </div>
-            {/* ... other footer columns remain the same ... */}
-          </div>
-          <div className="mt-12 pt-8 border-t border-gray-700 text-center text-sm text-gray-400">
-            © {new Date().getFullYear()} Windscreen Compare. All rights reserved.
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

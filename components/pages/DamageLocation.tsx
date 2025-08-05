@@ -134,6 +134,8 @@ const DamageLocation: React.FC<DamageLocationProps> = () => {
   const [globalImageUploadStatus, setGlobalImageUploadStatus] = useState<'pending' | 'uploaded' | 'skipped'>('pending');
   // Add state for glass color selection
   const [glassColor, setGlassColor] = useState<{ [key: string]: string | null }>({});
+  // Add state for scroll arrow indicator
+  const [showScrollArrow, setShowScrollArrow] = useState(false);
 
   // Add ref for tooltip containers to handle click outside
   const tooltipRef = React.useRef<HTMLDivElement>(null);
@@ -288,6 +290,7 @@ const generateAndUploadArgicCode = async (quoteId: string) => {
         // Reset global image upload status if no windows are selected
         if (newSet.size === 0) {
           setGlobalImageUploadStatus('pending')
+          setShowScrollArrow(false)
         }
       } else {
         newSet.add(windowId)
@@ -295,6 +298,8 @@ const generateAndUploadArgicCode = async (quoteId: string) => {
         if (prev.size === 0) {
           setGlobalImageUploadStatus('pending')
         }
+        // Show scroll arrow when a window is selected
+        setShowScrollArrow(true)
       }
       return newSet
     })
@@ -969,12 +974,34 @@ const generateAndUploadArgicCode = async (quoteId: string) => {
 
           {/* Main content area - better mobile layout */}
           <div className="flex flex-col lg:flex-row justify-between items-start gap-6">
-            {/* Car diagram container */}
-            <div className="flex-1 flex flex-col items-center w-full">
-              <div className="mb-8 w-full max-w-[529.5px] mx-auto px-4">
-                <div className="text-center mb-4 text-gray-600">
-                  Select the windows that are damaged
-                </div>
+                          {/* Car diagram container */}
+              <div className="flex-1 flex flex-col items-center w-full">
+                <div className="mb-8 w-full max-w-[529.5px] mx-auto px-4">
+                  <div className="text-center mb-4 text-gray-600">
+                    Select the windows that are damaged
+                  </div>
+                  
+                  {/* Scroll Arrow Indicator */}
+                  {showScrollArrow && (
+                    <div className="flex justify-center mb-4 animate-bounce">
+                      <div className="flex flex-col items-center text-[#0FB8C1]">
+                        <svg 
+                          className="w-8 h-8 mb-2" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            strokeWidth="2" 
+                            d="M19 14l-7 7m0 0l-7-7m7 7V3"
+                          />
+                        </svg>
+                        <span className="text-sm font-medium">Scroll down to continue</span>
+                      </div>
+                    </div>
+                  )}
                 {/* Make the container responsive */}
                 <div className="relative w-full" style={{ maxWidth: '529.5px' }}>
                   {/* Create aspect ratio container */}

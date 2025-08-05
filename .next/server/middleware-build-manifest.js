@@ -25,11 +25,6 @@ self.__BUILD_MANIFEST = {
       "static/chunks/main.js",
       "static/chunks/pages/contact-info.js"
     ],
-    "/damage-location": [
-      "static/chunks/webpack.js",
-      "static/chunks/main.js",
-      "static/chunks/pages/damage-location.js"
-    ],
     "/quote": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",

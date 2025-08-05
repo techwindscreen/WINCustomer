@@ -48,7 +48,7 @@
         <!-- Iframe with exact sizing to match your floating card design -->
         <div class="iframe-form-container" style="margin: 20px 0; width: 100%;">
           <iframe 
-            src="https://winc-customer.vercel.app/iframe-form.html" 
+            src="https://quote.windscreencompare.com/iframe-form.html" 
             width="100%" 
             height="220" 
             frameborder="0"
@@ -65,13 +65,13 @@
   <!-- JavaScript to handle iframe communication -->
   <script>
   window.addEventListener('message', function(event) {
-    if (event.origin !== 'https://winc-customer.vercel.app') {
+    if (event.origin !== 'https://quote.windscreencompare.com') {
       return;
     }
     
     if (event.data.type === 'WINDSCREEN_QUOTE_FORM_SUBMIT') {
       const { vehicleReg, postcode, quoteID } = event.data.data;
-      window.location.href = `/damage-location?vehicleReg=${encodeURIComponent(vehicleReg)}&postcode=${encodeURIComponent(postcode)}&quoteID=${encodeURIComponent(quoteID)}`;
+      window.location.href = `https://quote.windscreencompare.com/damage-location?vehicleReg=${encodeURIComponent(vehicleReg)}&postcode=${encodeURIComponent(postcode)}&quoteID=${encodeURIComponent(quoteID)}`;
     }
   });
   </script>

@@ -580,6 +580,7 @@ const ContactDetails: React.FC = () => {
                       >
                         I am paying for the work
                       </button>
+                      {/*
                       <button
                         type="button"
                         onClick={() => setPaymentOption('insurance')}
@@ -589,6 +590,7 @@ const ContactDetails: React.FC = () => {
                       >
                         I am claiming through insurance
                       </button>
+                      */}
                     </div>
                   </div>
 
@@ -747,6 +749,8 @@ const ContactDetails: React.FC = () => {
                     )}
                   </div>
 
+                  {/* Comment out insurance details section */}
+                  {/*
                   {paymentOption === 'insurance' && (
                     <>
                       <div className="mb-4">
@@ -829,6 +833,7 @@ const ContactDetails: React.FC = () => {
                             name="policyExpiryDate"
                             value={formData.policyExpiryDate}
                             onChange={handleInputChange}
+                            min={getTomorrowDate()}
                             className="w-full p-2 border rounded"
                             required
                           />
@@ -836,6 +841,7 @@ const ContactDetails: React.FC = () => {
                       </div>
                     </>
                   )}
+                  */}
 
                   <div className="mb-4">
                     <label className="flex items-start gap-2 cursor-pointer">
