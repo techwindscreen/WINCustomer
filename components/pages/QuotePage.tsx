@@ -79,8 +79,30 @@ const CheckoutForm = ({ amount, paymentType, isDisabled = false, customerEmail, 
           layout: paymentType === 'split' ? 'tabs' : 'auto',
           defaultCollapsed: false,
           ...(paymentType === 'split' && {
-            paymentMethodOrder: ['klarna', 'card'] // Prioritize Klarna for split payments
+            paymentMethodOrder: ['klarna'], // Only show Klarna for split payments
+            // Force refresh to ensure payment methods are loaded correctly
+            wallets: {
+              applePay: 'never',
+              googlePay: 'never'
+            },
+            // Add fields for debugging
+            fields: {
+              billingDetails: 'auto'
+            }
           })
+        }}
+        onReady={() => {
+          // Debug logging for split payments
+          if (paymentType === 'split') {
+            console.log('PaymentElement ready for split payment mode', {
+              paymentType,
+              amount: amount,
+              totalPrice,
+              currency: 'gbp',
+              splitAmount: currentPrice ? Math.round((currentPrice / 3) * 100) : 0,
+              elementsOptions: getElementsOptions(paymentType)
+            });
+          }
         }}
       />
       {error && <div className="text-red-500 text-sm">{error}</div>}
@@ -92,7 +114,7 @@ const CheckoutForm = ({ amount, paymentType, isDisabled = false, customerEmail, 
             </svg>
             <span className="font-medium text-purple-700">Split Payment Options</span>
           </div>
-          <p>Pay in 3 monthly installments with 0% interest. Choose from card or Klarna payment methods.</p>
+          <p>Pay in 3 monthly installments with 0% interest using Klarna.</p>
         </div>
       )}
       <button
@@ -823,17 +845,40 @@ const QuotePage: React.FC = () => {
         ? Math.round(currentPrice * 0.2 * 100)
         : Math.round((currentPrice / 3) * 100);
 
-    return {
+    // Base configuration for all payment types
+    const baseOptions = {
       mode: 'payment' as const,
       amount: baseAmount,
       currency: 'gbp' as const,
       appearance,
-      // Enhanced payment method configuration for split payments
-      ...(paymentType === 'split' && {
-        paymentMethodCreation: 'manual' as const,
-        paymentMethodTypes: ['card', 'klarna'] as const,
-      }),
     };
+
+    // For split payments, configure specifically for Klarna BNPL
+    if (paymentType === 'split') {
+      // Ensure minimum amount for Klarna (£3 minimum for Pay in 3)
+      const splitAmount = Math.max(baseAmount, 300);
+      
+      // Log the configuration for debugging
+      console.log('Split payment Elements configuration:', {
+        amount: splitAmount,
+        currency: 'gbp',
+        paymentType: 'split',
+        originalAmount: baseAmount
+      });
+      
+      return {
+        mode: 'payment' as const,
+        amount: splitAmount,
+        currency: 'gbp' as const,
+        appearance,
+        // Try client secret approach instead for better control
+        clientSecret: undefined, // Will be set by payment intent
+        // Use payment method types directly - only Klarna for split payments
+        paymentMethodTypes: ['klarna'],
+      };
+    }
+
+    return baseOptions;
   };
 
   // COMMENTED OUT: Company-specific pricing logic
@@ -1598,6 +1643,7 @@ const QuotePage: React.FC = () => {
                   {quotePrice && !isExpired && (
                     <div className="mb-8">
                       <Elements 
+                        key={`mobile-elements-${paymentType}`}
                         stripe={stripePromise} 
                         options={getElementsOptions(paymentType)}
                       >
@@ -1991,6 +2037,7 @@ const QuotePage: React.FC = () => {
                   {quotePrice && !isExpired && (
                     <div className="mb-8">
                       <Elements 
+                        key={`desktop-elements-${paymentType}`}
                         stripe={stripePromise} 
                         options={getElementsOptions(paymentType)}
                       >

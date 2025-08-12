@@ -21,7 +21,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             enabled: true,
             allow_redirects: 'always' // Allow redirect-based payment methods like Klarna
           },
-          payment_method_types: ['card', 'klarna'], // Explicitly enable Klarna for split payments
+          payment_method_types: ['klarna'], // Only enable Klarna for split payments
+          // Add capture method for Klarna compatibility
+          capture_method: 'automatic',
         }
       : {
           // For full/deposit payments, use standard configuration
@@ -48,7 +50,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       id: paymentIntent.id,
       amount: paymentIntent.amount,
       quote_id: quoteId,
-      payment_type: paymentType
+      payment_type: paymentType,
+      currency: paymentIntent.currency,
+      payment_method_types: paymentIntent.payment_method_types,
+      automatic_payment_methods: paymentIntent.automatic_payment_methods,
+      configuration_used: paymentMethodConfiguration
     });
 
     res.status(200).json({ clientSecret: paymentIntent.client_secret });

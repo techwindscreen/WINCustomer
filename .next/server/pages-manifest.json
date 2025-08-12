@@ -2,6 +2,11 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/": "pages/index.js",
-  "/damage-location": "pages/damage-location.js"
+  "/damage-location": "pages/damage-location.js",
+  "/contact-info": "pages/contact-info.js",
+  "/api/get-quote-data": "pages/api/get-quote-data.js",
+  "/quote": "pages/quote.js",
+  "/api/update-quote-settings": "pages/api/update-quote-settings.js",
+  "/api/submit-contact-info": "pages/api/submit-contact-info.js",
+  "/api/calculate-quote": "pages/api/calculate-quote.js"
 }
