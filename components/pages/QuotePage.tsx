@@ -74,8 +74,27 @@ const CheckoutForm = ({ amount, paymentType, isDisabled = false, customerEmail, 
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <PaymentElement />
+      <PaymentElement 
+        options={{
+          layout: paymentType === 'split' ? 'tabs' : 'auto',
+          defaultCollapsed: false,
+          ...(paymentType === 'split' && {
+            paymentMethodOrder: ['klarna', 'card'] // Prioritize Klarna for split payments
+          })
+        }}
+      />
       {error && <div className="text-red-500 text-sm">{error}</div>}
+      {paymentType === 'split' && (
+        <div className="text-sm text-gray-600 bg-purple-50 border border-purple-200 rounded-lg p-3">
+          <div className="flex items-center gap-2 mb-1">
+            <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="font-medium text-purple-700">Split Payment Options</span>
+          </div>
+          <p>Pay in 3 monthly installments with 0% interest. Choose from card or Klarna payment methods.</p>
+        </div>
+      )}
       <button
         type="submit"
         disabled={!stripe || processing || isDisabled}
@@ -239,9 +258,9 @@ const QuotePage: React.FC = () => {
       query: currentQuery
     }, undefined, { shallow: true });
     
-    // Calculate price locally instead of calling API
-    if (baseQuoteData && type) {
-      calculatePriceLocally(type);
+    // Always use API value; do not perform local recalculation
+    if (type) {
+      calculateQuoteWithGlassType(deliveryType, type);
     }
     
     // Update quote settings in database
@@ -318,52 +337,7 @@ const QuotePage: React.FC = () => {
     }
   };
 
-  // Local price calculation based on glass type
-  const calculatePriceLocally = (selectedGlassType: 'OEM' | 'OEE') => {
-    if (!baseQuoteData) return;
-
-    const { labourCost, baseMaterialsCost, specificationsCost } = baseQuoteData;
-    
-    // Apply glass type multiplier to materials
-    const glassMultiplier = selectedGlassType === 'OEM' ? 1.4 : 1.0;
-    const materialsCost = (baseMaterialsCost + specificationsCost) * glassMultiplier;
-    
-    // Calculate subtotal (labour + materials)
-    const subtotal = labourCost + materialsCost;
-    
-    // Add 20% service fee on labour + materials
-    const serviceFee = subtotal * 0.2;
-    const totalBeforeVAT = subtotal + serviceFee;
-    
-    // Add 20% VAT on the total
-    const vat = totalBeforeVAT * 0.2;
-    let totalPrice = totalBeforeVAT + vat;
-    
-    // Apply delivery type fee
-    if (deliveryType === 'express') {
-      totalPrice += 90; // £90 additional for express delivery
-    }
-    
-    // Round to nearest pound
-    totalPrice = Math.round(totalPrice);
-    
-    // Update state with calculated values
-    setQuotePrice(totalPrice);
-    setQuoteBreakdown({
-      labourCost: labourCost,
-      materialsCost: Math.round(materialsCost * 100) / 100,
-      subtotal: Math.round(subtotal * 100) / 100,
-      serviceFee: Math.round(serviceFee * 100) / 100,
-      totalBeforeVAT: Math.round(totalBeforeVAT * 100) / 100,
-      vat: Math.round(vat * 100) / 100,
-      finalPrice: totalPrice,
-      glassType: selectedGlassType,
-      deliveryType: deliveryType
-    });
-    
-    // Generate company prices with random variations
-    generateCompanyPrices(totalPrice);
-  };
+  // Remove local price calculation; always trust API value
 
   const calculateQuoteWithGlassType = async (type: 'standard' | 'express', glassTypeOverride?: 'OEM' | 'OEE' | null) => {
     try {
@@ -436,11 +410,14 @@ const QuotePage: React.FC = () => {
       console.log('Quote Response:', response.status, responseText);
 
       if (!response.ok) {
-        throw new Error(`Failed to calculate quote: ${responseText}`);
+        throw new Error('We cannot provide a quote at this time. Please try again.');
       }
 
       const data = JSON.parse(responseText);
       console.log('Quote calculation breakdown:', data.breakdown);
+      if (!data || typeof data.price !== 'number' || !isFinite(data.price)) {
+        throw new Error('We cannot provide a quote at this time. Please try again.');
+      }
       
       // Store base calculation data for local price calculations
       setBaseQuoteData({
@@ -460,7 +437,7 @@ const QuotePage: React.FC = () => {
       generateCompanyPrices(data.price);
     } catch (err) {
       console.error('Quote error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to calculate quote');
+      setError('We cannot provide a quote at this time. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -620,10 +597,11 @@ const QuotePage: React.FC = () => {
 
   // Trigger local calculation when glass type changes (after initial load)
   useEffect(() => {
-    if (baseQuoteData && glassType && !isLoading) {
-      calculatePriceLocally(glassType);
+    if (glassType && !isLoading) {
+      // Recalculate via API whenever glass type or delivery changes
+      calculateQuoteWithGlassType(deliveryType, glassType);
     }
-  }, [glassType, baseQuoteData, deliveryType]);
+  }, [glassType, deliveryType]);
 
   useEffect(() => {
     if (!isLoading && quotePrice && isMounted) {
@@ -835,6 +813,27 @@ const QuotePage: React.FC = () => {
     variables: {
       colorPrimary: '#0FB8C1',
     },
+  };
+
+  // Enhanced Elements options for better payment method support
+  const getElementsOptions = (paymentType: 'full' | 'deposit' | 'split') => {
+    const baseAmount = paymentType === 'full' 
+      ? Math.round(currentPrice * 0.95 * 100)
+      : paymentType === 'deposit' 
+        ? Math.round(currentPrice * 0.2 * 100)
+        : Math.round((currentPrice / 3) * 100);
+
+    return {
+      mode: 'payment' as const,
+      amount: baseAmount,
+      currency: 'gbp' as const,
+      appearance,
+      // Enhanced payment method configuration for split payments
+      ...(paymentType === 'split' && {
+        paymentMethodCreation: 'manual' as const,
+        paymentMethodTypes: ['card', 'klarna'] as const,
+      }),
+    };
   };
 
   // COMMENTED OUT: Company-specific pricing logic
@@ -1600,16 +1599,7 @@ const QuotePage: React.FC = () => {
                     <div className="mb-8">
                       <Elements 
                         stripe={stripePromise} 
-                        options={{
-                          mode: 'payment',
-                          amount: paymentType === 'full' 
-                            ? Math.round(currentPrice * 0.95 * 100)
-                            : paymentType === 'deposit' 
-                              ? Math.round(currentPrice * 0.2 * 100)
-                              : Math.round((currentPrice / 3) * 100),
-                          currency: 'gbp',
-                          appearance,
-                        }}
+                        options={getElementsOptions(paymentType)}
                       >
                         <CheckoutForm 
                           amount={paymentType === 'full' 
@@ -2002,16 +1992,7 @@ const QuotePage: React.FC = () => {
                     <div className="mb-8">
                       <Elements 
                         stripe={stripePromise} 
-                        options={{
-                          mode: 'payment',
-                          amount: paymentType === 'full' 
-                            ? Math.round(currentPrice * 0.95 * 100)
-                            : paymentType === 'deposit' 
-                              ? Math.round(currentPrice * 0.2 * 100)
-                              : Math.round((currentPrice / 3) * 100),
-                          currency: 'gbp',
-                          appearance,
-                        }}
+                        options={getElementsOptions(paymentType)}
                       >
                         <CheckoutForm 
                           amount={paymentType === 'full' 

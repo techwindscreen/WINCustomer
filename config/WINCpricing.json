@@ -1,0 +1,54 @@
+{
+  "percentages": {
+    "jqvmap1_ws": 0.012,
+    "jqvmap1_rw": 0.005,
+    "jqvmap1_df": 0.0025,
+    "jqvmap1_dg": 0.0025,
+    "jqvmap1_dr": 0.0025,
+    "jqvmap1_dd": 0.0025,
+    "jqvmap1_vp": 0.005,
+    "jqvmap1_vf": 0.005,
+    "jqvmap1_vr": 0.005,
+    "jqvmap1_vg": 0.005,
+    "jqvmap1_qr": 0.004,
+    "jqvmap1_qg": 0.004
+  },
+  "names": {
+    "jqvmap1_ws": "Windscreen",
+    "jqvmap1_rw": "Rear Window",
+    "jqvmap1_df": "Front Passenger Door",
+    "jqvmap1_dg": "Front Driver Door",
+    "jqvmap1_dr": "Rear Passenger Door",
+    "jqvmap1_dd": "Rear Driver Door",
+    "jqvmap1_vp": "Front Passenger Vent",
+    "jqvmap1_vf": "Front Driver Vent",
+    "jqvmap1_vr": "Rear Passenger Vent",
+    "jqvmap1_vg": "Rear Driver Vent",
+    "jqvmap1_qr": "Rear Passenger Quarter",
+    "jqvmap1_qg": "Rear Driver Quarter"
+  },
+  "minMaterialsCost": 10,
+  "defaultWindowPercentage": 0.0025,
+  "tintedPrivacySurcharge": 30,
+  "baseLabourPerWindow": 140,
+  "specifications": {
+    "Rain Sensor": 25,
+    "Sensor": 25,
+    "Heated": 35,
+    "Camera": 50,
+    "Heads Up Display": 75,
+    "HUD": 75,
+    "Aerial Antenna": 15,
+    "No Modification": 0,
+    "Not Sure?": 10
+  },
+  "glassTypes": {
+    "OEM": 1.4,
+    "OEE": 1.0,
+    "standard": 1.0
+  },
+  "serviceFeeRate": 0.2,
+  "vatRate": 0.2,
+  "expressDeliveryFee": 90,
+  "minTotalPrice": 70
+}

@@ -2,7 +2,6 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/contact-info": "pages/contact-info.js",
-  "/damage-location": "pages/damage-location.js",
-  "/quote": "pages/quote.js"
+  "/": "pages/index.js",
+  "/damage-location": "pages/damage-location.js"
 }

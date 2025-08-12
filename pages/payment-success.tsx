@@ -408,7 +408,12 @@ const PaymentSuccessPage: React.FC = () => {
         <header className="bg-white py-4 px-4 border-b shadow-sm">
           <div className="container mx-auto">
             <div className="flex items-center justify-between">
-              <Link href="/vercel-homepage">
+              <a
+                href="https://windscreencompare.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block focus:outline-none focus:ring-2 focus:ring-[#0FB8C1] rounded"
+              >
                 <div className="relative w-[200px] sm:w-[300px] h-[60px] sm:h-[90px]">
                   <Image
                     src="/WCLOGO.jpg"
@@ -423,7 +428,7 @@ const PaymentSuccessPage: React.FC = () => {
                     priority
                   />
                 </div>
-              </Link>
+              </a>
               <div className="hidden md:block">
                 <p className="text-gray-600">Need help? Call us at</p>
                 <p className="text-[#0FB8C1] font-bold text-xl">+44 20 3882 8574</p>

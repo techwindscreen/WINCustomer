@@ -13,12 +13,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const { amount, quoteId, paymentType, totalAmount, customerEmail } = req.body;
 
+    // Configure payment methods based on payment type
+    const paymentMethodConfiguration = paymentType === 'split' 
+      ? {
+          // For split payments, enable specific payment methods including BNPL options
+          automatic_payment_methods: {
+            enabled: true,
+            allow_redirects: 'always' // Allow redirect-based payment methods like Klarna
+          },
+          payment_method_types: ['card', 'klarna'], // Explicitly enable Klarna for split payments
+        }
+      : {
+          // For full/deposit payments, use standard configuration
+          automatic_payment_methods: {
+            enabled: true,
+          },
+        };
+
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100),
       currency: 'gbp',
-      automatic_payment_methods: {
-        enabled: true,
-      },
+      ...paymentMethodConfiguration,
       metadata: {
         quote_id: quoteId || '',
         payment_type: paymentType || 'full',

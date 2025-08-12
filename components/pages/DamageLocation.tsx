@@ -923,16 +923,23 @@ const generateAndUploadArgicCode = async (quoteId: string) => {
         <header className="bg-white py-2 px-4 border-b">
           <div className="container mx-auto">
             <div className="flex items-center justify-center sm:justify-start">
-              <div className="relative w-[150px] sm:w-[200px] h-[45px] sm:h-[60px] -ml-0 sm:-ml-4">
-                <Image 
-                  src="/WCLOGO.jpg"
-                  alt="Windscreen Compare Logo"
-                  width={250}
-                  height={60}
-                  className="object-contain w-full h-full"
-                  priority
-                />
-              </div>
+              <a
+                href="https://windscreencompare.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block focus:outline-none focus:ring-2 focus:ring-[#0FB8C1] rounded"
+              >
+                <div className="relative w-[150px] sm:w-[200px] h-[45px] sm:h-[60px] -ml-0 sm:-ml-4 cursor-pointer">
+                  <Image 
+                    src="/WCLOGO.jpg"
+                    alt="Windscreen Compare Logo"
+                    width={250}
+                    height={60}
+                    className="object-contain w-full h-full"
+                    priority
+                  />
+                </div>
+              </a>
             </div>
           </div>
         </header>
