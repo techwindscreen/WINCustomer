@@ -243,8 +243,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         year: 'numeric'
       }),
       
-      // Add deduplication fields for Klaviyo
-      unique_event_id: `payment_${paymentData.paymentIntentId}_${Date.now()}`,
+      // Add deduplication fields for Klaviyo - use deterministic IDs
+      unique_event_id: `payment_${paymentData.paymentIntentId}_${paymentData.customerEmail.replace('@', '_at_')}`,
       deduplication_key: deduplicationKey
     };
 

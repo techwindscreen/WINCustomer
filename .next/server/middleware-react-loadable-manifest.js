@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST="{\"pages/quote.js -> ../components/pages/QuotePage\":{\"id\":\"pages/quote.js -> ../components/pages/QuotePage\",\"files\":[\"static/chunks/components_pages_QuotePage_tsx.js\"]}}"
+self.__REACT_LOADABLE_MANIFEST="{}"

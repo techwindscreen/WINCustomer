@@ -2,11 +2,15 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
+  "/": "pages/index.js",
+  "/payment-success": "pages/payment-success.js",
+  "/api/vehicle-lookup": "pages/api/vehicle-lookup.js",
+  "/api/track-quote-started": "pages/api/track-quote-started.js",
   "/damage-location": "pages/damage-location.js",
-  "/contact-info": "pages/contact-info.js",
+  "/api/upload-vehicle-details": "pages/api/upload-vehicle-details.js",
+  "/api/save-damage-data": "pages/api/save-damage-data.js",
   "/api/get-quote-data": "pages/api/get-quote-data.js",
-  "/quote": "pages/quote.js",
-  "/api/update-quote-settings": "pages/api/update-quote-settings.js",
-  "/api/submit-contact-info": "pages/api/submit-contact-info.js",
-  "/api/calculate-quote": "pages/api/calculate-quote.js"
+  "/contact-info": "pages/contact-info.js",
+  "/api/existing-data": "pages/api/existing-data.js",
+  "/api/update-argic-code": "pages/api/update-argic-code.js"
 }

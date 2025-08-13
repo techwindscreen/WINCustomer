@@ -1,8 +1,29 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { supabase } from '../../../lib/supabaseClient';
+
+// Window ID to name mapping
+const WINDOW_NAMES: { [key: string]: string } = {
+  'jqvmap1_ws': 'Windscreen',
+  'jqvmap1_rw': 'Rear Window',
+  'jqvmap1_df': 'Front Passenger Door',
+  'jqvmap1_dg': 'Front Driver Door',
+  'jqvmap1_dr': 'Rear Passenger Door',
+  'jqvmap1_dd': 'Rear Driver Door',
+  'jqvmap1_vp': 'Front Passenger Vent',
+  'jqvmap1_vf': 'Front Driver Vent',
+  'jqvmap1_vr': 'Rear Passenger Vent',
+  'jqvmap1_vg': 'Rear Driver Vent',
+  'jqvmap1_qr': 'Rear Passenger Quarter',
+  'jqvmap1_qg': 'Rear Driver Quarter'
+};
+
+// Helper function to get window name from ID
+const getWindowName = (windowId: string): string => {
+  return WINDOW_NAMES[windowId] || windowId;
+};
 
 interface QuoteData {
   id: string;
-  bookingReference: string;
   status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
   createdAt: string;
   customer: {
@@ -25,8 +46,11 @@ interface QuoteData {
     appointmentType: 'mobile' | 'workshop';
   };
   pricing: {
-    glassPrice: number;
-    fittingPrice: number;
+    materialsCost: number;
+    labourCost: number;
+    serviceFee: number;
+    subtotal: number;
+    totalBeforeVAT: number;
     vatAmount: number;
     totalPrice: number;
   };
@@ -61,112 +85,109 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // TODO: Replace with actual database query
-    // const quote = await getQuoteById(id);
-    
-    // Mock data for demonstration - replace with actual database lookup
-    const mockQuotes: Record<string, QuoteData> = {
-      'WIN-2024-001234': {
-        id: 'WIN-2024-001234',
-        bookingReference: 'BK-001234',
-        status: 'confirmed',
-        createdAt: '2024-01-15T10:30:00Z',
-        customer: {
-          name: 'John Smith',
-          email: 'john.smith@email.com',
-          phone: '+44 7123 456789',
-          address: '123 High Street, London',
-          postcode: 'SW1A 1AA'
-        },
-        vehicle: {
-          registration: 'AB12 CDE',
-          make: 'Ford',
-          model: 'Focus',
-          year: '2020'
-        },
-        service: {
-          glassType: 'OEE',
-          damageLocations: ['Front Windscreen'],
-          damageTypes: ['Chip', 'Crack'],
-          appointmentType: 'mobile'
-        },
-        pricing: {
-          glassPrice: 199.99,
-          fittingPrice: 80.00,
-          vatAmount: 55.99,
-          totalPrice: 335.98
-        },
-        payment: {
-          method: 'card',
-          type: 'pay_deposit',
-          depositAmount: 50.00,
-          remainingAmount: 285.98,
-          status: 'partially_paid'
-        },
-        appointment: {
-          date: '2024-01-20',
-          time: '10:00 AM - 12:00 PM',
-          address: '123 High Street, London, SW1A 1AA',
-          technician: {
-            name: 'Mike Johnson',
-            phone: '+44 7987 654321',
-            experience: '8'
-          }
-        }
-      },
-      'WIN-2024-001235': {
-        id: 'WIN-2024-001235',
-        bookingReference: 'BK-001235',
-        status: 'in_progress',
-        createdAt: '2024-01-16T14:20:00Z',
-        customer: {
-          name: 'Sarah Johnson',
-          email: 'sarah.johnson@email.com',
-          phone: '+44 7987 654321',
-          address: '456 Oak Avenue, Manchester',
-          postcode: 'M1 2AB'
-        },
-        vehicle: {
-          registration: 'XY98 ZAB',
-          make: 'Volkswagen',
-          model: 'Golf',
-          year: '2019'
-        },
-        service: {
-          glassType: 'OEM',
-          damageLocations: ['Front Windscreen', 'Driver Side Window'],
-          damageTypes: ['Stone Chip', 'Crack', 'Scratch'],
-          appointmentType: 'workshop'
-        },
-        pricing: {
-          glassPrice: 299.99,
-          fittingPrice: 120.00,
-          vatAmount: 83.99,
-          totalPrice: 503.98
-        },
-        payment: {
-          method: 'bank_transfer',
-          type: 'pay_in_full',
-          status: 'paid'
-        },
-        appointment: {
-          date: '2024-01-22',
-          time: '9:00 AM - 11:00 AM',
-          address: 'WindscreenCompare Workshop, 789 Industrial Estate, Manchester, M2 3CD',
-          technician: {
-            name: 'David Wilson',
-            phone: '+44 7456 123789',
-            experience: '12'
-          }
-        }
-      }
-    };
+    // Fetch quote data from Supabase MasterCustomer table
+    const { data: quoteData, error } = await supabase
+      .from('MasterCustomer')
+      .select('*')
+      .eq('quote_id', id)
+      .single();
 
-    const quote = mockQuotes[id];
-
-    if (!quote) {
+    if (error || !quoteData) {
+      console.error('Quote not found:', error);
       return res.status(404).json({ message: 'Quote not found' });
     }
+
+    console.log('Found quote data:', quoteData);
+
+    // If vehicle details are missing, try to fetch from another record with the same vehicle_reg
+    let vehicleDetails = {
+      make: quoteData.brand || quoteData.vehicle_make || 'Unknown',
+      model: quoteData.model || quoteData.vehicle_model || 'Unknown',
+      year: quoteData.year || quoteData.vehicle_year || 'Unknown'
+    };
+
+    if (vehicleDetails.make === 'Unknown' && vehicleDetails.model === 'Unknown' && quoteData.vehicle_reg) {
+      console.log('Vehicle details missing, trying to fetch from other records...');
+      const { data: vehicleRecord } = await supabase
+        .from('MasterCustomer')
+        .select('brand, model, year, vehicle_make, vehicle_model, vehicle_year')
+        .eq('vehicle_reg', quoteData.vehicle_reg)
+        .not('brand', 'is', null)
+        .limit(1)
+        .single();
+
+      if (vehicleRecord) {
+        vehicleDetails = {
+          make: vehicleRecord.brand || vehicleRecord.vehicle_make || 'Unknown',
+          model: vehicleRecord.model || vehicleRecord.vehicle_model || 'Unknown',
+          year: vehicleRecord.year || vehicleRecord.vehicle_year || 'Unknown'
+        };
+        console.log('Found vehicle details from other record:', vehicleDetails);
+      }
+    }
+
+    // Convert database data to expected format
+    const quote: QuoteData = {
+      id: quoteData.quote_id,
+      status: 'confirmed', // You may want to add a status field to your database
+      createdAt: quoteData.created_at || new Date().toISOString(),
+      customer: {
+        name: quoteData.full_name || 'Unknown',
+        email: quoteData.email || '',
+        phone: quoteData.mobile || '',
+        address: quoteData.location || '',
+        postcode: quoteData.postcode || ''
+      },
+      vehicle: {
+        registration: quoteData.vehicle_reg || '',
+        make: vehicleDetails.make,
+        model: vehicleDetails.model,
+        year: vehicleDetails.year
+      },
+      service: {
+        glassType: (quoteData.glass_type as 'OEE' | 'OEM') || 'OEE',
+        damageLocations: Array.isArray(quoteData.selected_windows) 
+          ? quoteData.selected_windows.flat().map(getWindowName)
+          : quoteData.selected_windows 
+            ? [getWindowName(quoteData.selected_windows)] 
+            : [],
+        damageTypes: quoteData.window_damage 
+          ? Array.isArray(quoteData.window_damage) 
+            ? Object.values(quoteData.window_damage.flat()[0] || {}).filter(Boolean)
+            : Object.values(quoteData.window_damage || {}).filter(Boolean)
+          : [],
+        appointmentType: 'mobile' // You may want to add this field to your database
+      },
+      pricing: {
+        // Calculate components based on total price (reverse engineering)
+        // Total includes VAT, so we need to extract the VAT portion first
+        materialsCost: Math.round(((quoteData.quote_price || 0) / 1.2) * 0.42), // ~42% of pre-VAT price for materials
+        labourCost: Math.round(((quoteData.quote_price || 0) / 1.2) * 0.50), // ~50% of pre-VAT price for labour
+        serviceFee: Math.round(((quoteData.quote_price || 0) / 1.2) * 0.08), // ~8% of pre-VAT price for service fee
+        subtotal: Math.round(((quoteData.quote_price || 0) / 1.2) * 0.92), // Materials + Labour (before service fee)
+        totalBeforeVAT: Math.round((quoteData.quote_price || 0) / 1.2), // Total before VAT
+        vatAmount: Math.round((quoteData.quote_price || 0) - ((quoteData.quote_price || 0) / 1.2)), // VAT is 20%
+        totalPrice: quoteData.quote_price || 0
+      },
+      payment: {
+        method: 'card',
+        type: quoteData.payment_option === 'deposit' ? 'pay_deposit' : 
+              quoteData.payment_option === 'split' ? 'split_payment' : 'pay_in_full',
+        depositAmount: quoteData.payment_option === 'deposit' ? Math.round((quoteData.quote_price || 0) * 0.2) : undefined,
+        remainingAmount: quoteData.payment_option === 'deposit' ? Math.round((quoteData.quote_price || 0) * 0.8) : undefined,
+        status: 'pending' // You may want to add payment status to your database
+      },
+      appointment: quoteData.appointment_date ? {
+        date: quoteData.appointment_date,
+        time: quoteData.time_slot || 'TBC',
+        address: quoteData.location || '',
+        technician: {
+          name: 'TBC',
+          phone: 'TBC',
+          experience: 'TBC'
+        }
+      } : undefined
+    };
 
     res.status(200).json(quote);
   } catch (error) {

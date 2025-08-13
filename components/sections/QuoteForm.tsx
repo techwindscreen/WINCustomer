@@ -4,12 +4,14 @@ interface QuoteFormProps {
   vehicleReg: string
   postcode: string
   error: string
+  vehicleRegError: boolean
+  isValidatingVehicle: boolean
   setVehicleReg: (value: string) => void
   setPostcode: (value: string) => void
   handleSubmit: (e: FormEvent) => void
 }
 
-export const QuoteForm = ({ vehicleReg, postcode, error, setVehicleReg, setPostcode, handleSubmit }: QuoteFormProps) => {
+export const QuoteForm = ({ vehicleReg, postcode, error, vehicleRegError, isValidatingVehicle, setVehicleReg, setPostcode, handleSubmit }: QuoteFormProps) => {
   return (
     <form onSubmit={handleSubmit} className="max-w-2xl mx-auto bg-white shadow-md rounded-lg overflow-hidden">
       {/* Show error msg if there's one */}
@@ -29,7 +31,11 @@ export const QuoteForm = ({ vehicleReg, postcode, error, setVehicleReg, setPostc
             value={vehicleReg}
             onChange={(e) => setVehicleReg(e.target.value)}
             placeholder="Enter Number Plate"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0FB8C1]"
+            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+              vehicleRegError 
+                ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                : 'border-gray-300 focus:ring-[#0FB8C1] focus:border-[#0FB8C1]'
+            }`}
             required
           />
         </div>
@@ -53,9 +59,14 @@ export const QuoteForm = ({ vehicleReg, postcode, error, setVehicleReg, setPostc
         <p className="text-sm text-gray-600 mb-4 underline cursor-pointer">Not sure? Enter car details manually</p>
         <button 
           type="submit"
-          className="w-full bg-[#0FB8C1] text-white py-3 rounded-full hover:bg-[#0DA6AE] transition duration-300 text-lg font-semibold"
+          disabled={isValidatingVehicle}
+          className={`w-full py-3 rounded-full transition duration-300 text-lg font-semibold ${
+            isValidatingVehicle
+              ? 'bg-gray-400 text-white cursor-not-allowed'
+              : 'bg-[#0FB8C1] text-white hover:bg-[#0DA6AE]'
+          }`}
         >
-          Let's Go
+          {isValidatingVehicle ? 'Validating Vehicle...' : "Let's Go"}
         </button>
       </div>
     </form>

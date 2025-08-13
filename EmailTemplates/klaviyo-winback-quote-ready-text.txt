@@ -1,0 +1,41 @@
+Subject: Your Windscreen Quote is Ready - Complete Your Booking
+
+Hi {{ person.first_name|default:"there" }},
+
+Your windscreen replacement quote is ready! 
+
+QUOTE DETAILS:
+Quote ID: {{ event.quote_id|default:"WIN-XXXXX" }}
+Vehicle: {{ event.vehicle_registration|default:"Your Vehicle" }}
+Service: {{ event.glass_type|default:"Professional" }} Windscreen Replacement
+Total Price: £{{ event.total_price|default:"XXX.XX" }}
+
+🚗 COMPLETE YOUR BOOKING:
+https://quote.windscreencompare.com/api/get-permanent-link?quoteId={{ event.quote_id }}&email={{ person.email }}
+
+WHY CHOOSE US:
+✓ Expert Installation by certified technicians
+✓ Quality Guarantee with manufacturer warranty  
+✓ Flexible Payments (full, deposit, or Klarna split)
+✓ Convenient Mobile Service at your location
+
+PAYMENT OPTIONS:
+• Pay in Full: Complete payment today
+• 30% Deposit: Pay £{{ event.deposit_amount|default:"XXX" }} now, rest on completion
+• Split Payment: Use Klarna for installments
+
+⏰ BOOK SOON: Weather conditions can affect availability. Secure your preferred date today.
+
+Need help? Reply to this email or call 0800 XXX XXXX.
+
+Best regards,
+The Windscreen Compare Team
+
+--
+Windscreen Compare Ltd
+Professional Windscreen Replacement Services
+📧 hello@windscreencompare.com
+📞 0800 XXX XXXX
+🌐 https://quote.windscreencompare.com
+
+Unsubscribe: {{ unsubscribe_url }}

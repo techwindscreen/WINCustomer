@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Don't Miss Out - Your Quote Expires Soon</title>
+    <style>
+        /* Similar base styles as the first template */
+        body, table, td, p, a, li, blockquote {
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+        }
+        table, td {
+            mso-table-lspace: 0pt;
+            mso-table-rspace: 0pt;
+        }
+        img {
+            -ms-interpolation-mode: bicubic;
+            border: 0;
+            outline: none;
+            text-decoration: none;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #f8fafc;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #374151;
+        }
+        
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            padding: 30px 20px;
+            text-align: center;
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            background-color: white;
+            border-radius: 12px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            color: #dc2626;
+        }
+        
+        .header h1 {
+            color: white;
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            color: #fecaca;
+            margin: 8px 0 0;
+            font-size: 16px;
+        }
+        
+        .content {
+            padding: 40px 30px;
+        }
+        
+        .urgency-banner {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            color: #92400e;
+            padding: 20px;
+            text-align: center;
+            margin: -40px -30px 30px;
+            font-weight: 700;
+            font-size: 18px;
+        }
+        
+        .quote-summary {
+            background-color: #fef2f2;
+            border-radius: 8px;
+            padding: 24px;
+            margin: 24px 0;
+            border-left: 4px solid #dc2626;
+            text-align: center;
+        }
+        
+        .price-highlight {
+            font-size: 32px;
+            font-weight: 800;
+            color: #dc2626;
+            margin: 16px 0;
+        }
+        
+        .cta-section {
+            text-align: center;
+            margin: 32px 0;
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            padding: 30px;
+            border-radius: 12px;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            color: white !important;
+            text-decoration: none;
+            padding: 18px 36px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 20px;
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .social-proof {
+            background-color: #f0fdf4;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 24px 0;
+            text-align: center;
+        }
+        
+        .testimonial {
+            font-style: italic;
+            font-size: 16px;
+            color: #166534;
+            margin-bottom: 10px;
+        }
+        
+        .footer {
+            background-color: #f8fafc;
+            padding: 30px;
+            text-align: center;
+            color: #6b7280;
+            font-size: 14px;
+        }
+        
+        /* Mobile responsiveness */
+        @media screen and (max-width: 600px) {
+            .email-container {
+                margin: 0;
+                border-radius: 0;
+            }
+            
+            .content {
+                padding: 30px 20px;
+            }
+            
+            .urgency-banner {
+                margin: -30px -20px 20px;
+                font-size: 16px;
+            }
+            
+            .price-highlight {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">WC</div>
+            <h1>Still Interested?</h1>
+            <p>Your windscreen quote is waiting</p>
+        </div>
+        
+        <!-- Urgency Banner -->
+        <div class="urgency-banner">
+            ⚠️ REMINDER: Your Quote is Still Available
+        </div>
+        
+        <!-- Main Content -->
+        <div class="content">
+            <p>Hi {{ person.first_name|default:"there" }},</p>
+            
+            <p>We noticed you haven't completed your windscreen replacement booking yet. Don't worry - your quote is still available and we're here to help!</p>
+            
+            <!-- Quote Summary -->
+            <div class="quote-summary">
+                <h3 style="margin: 0 0 16px; color: #dc2626;">Your Quote: {{ event.quote_id|default:"WIN-XXXXX" }}</h3>
+                <p style="margin: 8px 0; color: #6b7280;">{{ event.vehicle_registration|default:"Your Vehicle" }} • {{ event.glass_type|default:"Professional" }} Windscreen</p>
+                <div class="price-highlight">£{{ event.total_price|default:"XXX.XX" }}</div>
+                <p style="margin: 0; color: #6b7280; font-size: 14px;">Includes fitting & VAT</p>
+            </div>
+            
+            <!-- CTA Section -->
+            <div class="cta-section">
+                <h3 style="margin: 0 0 20px; color: #92400e;">Complete Your Booking in 2 Minutes</h3>
+                <a href="https://quote.windscreencompare.com/api/get-permanent-link?quoteId={{ event.quote_id }}&email={{ person.email }}" class="cta-button">
+                    Book Now
+                </a>
+                <p style="margin: 20px 0 0; color: #92400e; font-size: 14px; font-weight: 600;">
+                    💳 Flexible payment options available
+                </p>
+            </div>
+            
+            <!-- Social Proof -->
+            <div class="social-proof">
+                <div class="testimonial">
+                    "Excellent service! Quick, professional, and great value. My windscreen looks perfect."
+                </div>
+                <p style="margin: 0; font-weight: 600; color: #166534;">★★★★★ Sarah M. - Verified Customer</p>
+            </div>
+            
+            <!-- Reasons to Book -->
+            <h3 style="color: #1f2937; margin: 32px 0 16px;">Why Book With Us?</h3>
+            <ul style="margin-left: 0; padding-left: 20px; color: #6b7280;">
+                <li style="margin-bottom: 8px;"><strong>Next Day Service:</strong> Get booked in quickly</li>
+                <li style="margin-bottom: 8px;"><strong>Mobile Service:</strong> We come to you (home or work)</li>
+                <li style="margin-bottom: 8px;"><strong>Quality Guarantee:</strong> Premium glass with warranty</li>
+                <li style="margin-bottom: 8px;"><strong>No Hidden Costs:</strong> Price shown is all you pay</li>
+            </ul>
+            
+            <!-- Alternative CTAs -->
+            <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 24px 0; text-align: center;">
+                <p style="margin: 0 0 16px; font-weight: 600; color: #1f2937;">Prefer to speak to someone?</p>
+                <p style="margin: 0; color: #6b7280;">
+                    📞 Call us on <strong>0800 XXX XXXX</strong><br>
+                    💬 Or simply reply to this email
+                </p>
+            </div>
+            
+            <p>We're here to make your windscreen replacement as easy as possible.</p>
+            
+            <p>Best regards,<br>
+            <strong>The Windscreen Compare Team</strong></p>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <p>Windscreen Compare Ltd<br>
+            Professional Windscreen Replacement Services<br>
+            📧 hello@windscreencompare.com | 📞 0800 XXX XXXX</p>
+            
+            <p style="font-size: 12px; margin-top: 20px;">
+                <a href="{{ unsubscribe_url }}" style="color: #6b7280;">Unsubscribe</a> | 
+                <a href="https://quote.windscreencompare.com" style="color: #6b7280;">Visit Website</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

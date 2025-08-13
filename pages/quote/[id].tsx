@@ -3,9 +3,29 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { Calendar, Car, MapPin, Phone, Mail, Clock, CreditCard, FileText, CheckCircle, AlertCircle } from 'lucide-react';
 
+// Window ID to name mapping
+const WINDOW_NAMES: { [key: string]: string } = {
+  'jqvmap1_ws': 'Windscreen',
+  'jqvmap1_rw': 'Rear Window',
+  'jqvmap1_df': 'Front Passenger Door',
+  'jqvmap1_dg': 'Front Driver Door',
+  'jqvmap1_dr': 'Rear Passenger Door',
+  'jqvmap1_dd': 'Rear Driver Door',
+  'jqvmap1_vp': 'Front Passenger Vent',
+  'jqvmap1_vf': 'Front Driver Vent',
+  'jqvmap1_vr': 'Rear Passenger Vent',
+  'jqvmap1_vg': 'Rear Driver Vent',
+  'jqvmap1_qr': 'Rear Passenger Quarter',
+  'jqvmap1_qg': 'Rear Driver Quarter'
+};
+
+// Helper function to get window name from ID
+const getWindowName = (windowId: string): string => {
+  return WINDOW_NAMES[windowId] || windowId;
+};
+
 interface QuoteData {
   id: string;
-  bookingReference: string;
   status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
   createdAt: string;
   customer: {
@@ -28,8 +48,11 @@ interface QuoteData {
     appointmentType: 'mobile' | 'workshop';
   };
   pricing: {
-    glassPrice: number;
-    fittingPrice: number;
+    materialsCost: number;
+    labourCost: number;
+    serviceFee: number;
+    subtotal: number;
+    totalBeforeVAT: number;
     vatAmount: number;
     totalPrice: number;
   };
@@ -193,14 +216,10 @@ export default function QuoteDetailsPage() {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 gap-6">
                   <div>
                     <label className="text-sm font-medium text-gray-500">Quote ID</label>
                     <p className="text-lg font-semibold text-gray-900">{quoteData.id}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Booking Reference</label>
-                    <p className="text-lg font-semibold text-gray-900">{quoteData.bookingReference}</p>
                   </div>
                 </div>
               </div>
@@ -255,7 +274,7 @@ export default function QuoteDetailsPage() {
                           key={index}
                           className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium"
                         >
-                          {location}
+                          {getWindowName(location)}
                         </span>
                       ))}
                     </div>
@@ -363,22 +382,72 @@ export default function QuoteDetailsPage() {
                   <h2 className="text-xl font-semibold text-gray-900">Pricing</h2>
                 </div>
                 
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Glass Cost</span>
-                    <span className="font-semibold">{formatPrice(quoteData.pricing.glassPrice)}</span>
+                <div className="space-y-3 text-sm">
+                  {/* Labor Breakdown */}
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-medium text-gray-700">Labor & Service</span>
+                      <span className="font-semibold">{formatPrice(quoteData.pricing.labourCost)}</span>
+                    </div>
+                    <div className="text-xs text-gray-600 space-y-1">
+                      <div className="flex justify-between">
+                        <span>• Professional Installation</span>
+                        <span>£{Math.round(quoteData.pricing.labourCost * 0.7).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>• Mobile Service & Tools</span>
+                        <span>£{Math.round(quoteData.pricing.labourCost * 0.2).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>• Quality Assurance</span>
+                        <span>£{Math.round(quoteData.pricing.labourCost * 0.1).toFixed(2)}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Fitting Cost</span>
-                    <span className="font-semibold">{formatPrice(quoteData.pricing.fittingPrice)}</span>
+
+                  {/* Materials Breakdown */}
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-medium text-gray-700">Materials & Glass</span>
+                      <span className="font-semibold">{formatPrice(quoteData.pricing.materialsCost)}</span>
+                    </div>
+                    <div className="text-xs text-gray-600 space-y-1">
+                      <div className="flex justify-between">
+                        <span>• Glass & Sealants</span>
+                        <span>£{Math.round(quoteData.pricing.materialsCost * 0.8).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>• Installation Materials</span>
+                        <span>£{Math.round(quoteData.pricing.materialsCost * 0.2).toFixed(2)}</span>
+                      </div>
+                      {quoteData.service.glassType === 'OEM' && (
+                        <div className="flex justify-between font-medium text-orange-600">
+                          <span>• Premium Glass Upgrade (+40%)</span>
+                          <span>+£{Math.round((quoteData.pricing.materialsCost * 0.4) * 100) / 100}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">VAT</span>
-                    <span className="font-semibold">{formatPrice(quoteData.pricing.vatAmount)}</span>
+
+                  {/* Other Costs */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Service Fee (20%)</span>
+                      <span className="font-semibold">{formatPrice(quoteData.pricing.serviceFee)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Subtotal</span>
+                      <span className="font-semibold">{formatPrice(quoteData.pricing.totalBeforeVAT)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">VAT (20%)</span>
+                      <span className="font-semibold">{formatPrice(quoteData.pricing.vatAmount)}</span>
+                    </div>
                   </div>
+
                   <hr className="my-3" />
                   <div className="flex justify-between text-lg">
-                    <span className="font-semibold text-gray-900">Total</span>
+                    <span className="font-semibold text-gray-900">Total (inc. VAT)</span>
                     <span className="font-bold text-[#0FB8C1]">{formatPrice(quoteData.pricing.totalPrice)}</span>
                   </div>
                 </div>
@@ -413,19 +482,19 @@ export default function QuoteDetailsPage() {
                 </div>
               </div>
 
-              {/* Actions */}
+              {/* Contact Information */}
               <div className="bg-white rounded-xl shadow-sm border p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">Actions</h2>
-                <div className="space-y-3">
-                  <button className="w-full bg-[#0FB8C1] text-white py-3 px-4 rounded-lg hover:bg-[#0da8b0] transition-colors font-medium">
-                    Download Quote PDF
-                  </button>
-                  <button className="w-full border border-gray-300 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-50 transition-colors font-medium">
-                    Request Changes
-                  </button>
-                  <button className="w-full text-[#0FB8C1] py-3 px-4 rounded-lg hover:bg-[#0FB8C1]/5 transition-colors font-medium">
-                    Contact Support
-                  </button>
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">Need Help?</h2>
+                <div className="text-center">
+                  <p className="text-gray-600 mb-3">
+                    If you need to reschedule your appointment or have any questions, please contact us at:
+                  </p>
+                  <a
+                    href="mailto:hello@windscreencompare.com"
+                    className="text-[#0FB8C1] font-semibold text-lg hover:text-[#0da8b0] transition-colors"
+                  >
+                    hello@windscreencompare.com
+                  </a>
                 </div>
               </div>
             </div>

@@ -8,7 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-        const { formData, quoteId, selectedWindows, windowDamage, specifications, paymentOption, glassType, quotePrice, adasCalibration } = req.body;
+        const { formData, quoteId, selectedWindows, windowDamage, specifications, paymentOption, glassType, quotePrice, adasCalibration, deliveryType, vehicleDetails } = req.body;
 
         if (!quoteId) {
             return res.status(400).json({ message: 'Quote ID is required' });
@@ -45,29 +45,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         let result;
         if (existingRecord) {
             // Update existing record
+            const updateData: any = {
+                full_name: formData.fullName,
+                email: formData.email,
+                mobile: formData.mobile,
+                postcode: formData.postcode,
+                location: formData.location,
+                appointment_date: formData.date,
+                time_slot: formData.timeSlot,
+                insurance_provider: formData.insuranceProvider,
+                policy_number: formData.policyNumber,
+                incident_date: formData.incidentDate,
+                policy_excess: formData.policyExcessAmount,
+                policy_expiry: formData.policyExpiryDate,
+                selected_windows: selectedWindows && selectedWindows.length > 0 ? [selectedWindows] : null,
+                window_damage: windowDamage && Object.keys(windowDamage).length > 0 ? [windowDamage] : null,
+                window_spec: specifications && specifications.length > 0 ? [specifications] : null,
+                payment_option: standardizedPaymentOption,
+                glass_type: glassType || null,
+                quote_price: quotePrice || existingRecord.quote_price,
+                adas_calibration: adasCalibration || null,
+                delivery_type: deliveryType || 'standard'
+            };
+
+            // Add vehicle details if provided and not already in existing record
+            if (vehicleDetails && (!existingRecord.brand || !existingRecord.model)) {
+                updateData.brand = vehicleDetails.manufacturer || existingRecord.brand;
+                updateData.model = vehicleDetails.model || existingRecord.model;
+                updateData.year = vehicleDetails.year || existingRecord.year;
+                updateData.colour = vehicleDetails.colour || existingRecord.colour;
+                updateData.type = vehicleDetails.type || existingRecord.type;
+                updateData.style = vehicleDetails.style || existingRecord.style;
+                updateData.door = vehicleDetails.doorPlan ? vehicleDetails.doorPlan.split(' ')[0] : existingRecord.door;
+            }
+
             const { data, error } = await supabase
                 .from('MasterCustomer')
-                .update({
-                    full_name: formData.fullName,
-                    email: formData.email,
-                    mobile: formData.mobile,
-                    postcode: formData.postcode,
-                    location: formData.location,
-                    appointment_date: formData.date,
-                    time_slot: formData.timeSlot,
-                    insurance_provider: formData.insuranceProvider,
-                    policy_number: formData.policyNumber,
-                    incident_date: formData.incidentDate,
-                    policy_excess: formData.policyExcessAmount,
-                    policy_expiry: formData.policyExpiryDate,
-                    selected_windows: selectedWindows && selectedWindows.length > 0 ? [selectedWindows] : null,
-                    window_damage: windowDamage && Object.keys(windowDamage).length > 0 ? [windowDamage] : null,
-                    window_spec: specifications && specifications.length > 0 ? [specifications] : null,
-                    payment_option: standardizedPaymentOption,
-                    glass_type: glassType || null,
-                    quote_price: quotePrice || existingRecord.quote_price,
-                    adas_calibration: adasCalibration || null
-                })
+                .update(updateData)
                 .eq('quote_id', quoteId)
                 .select()
                 .single();
@@ -76,31 +90,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             result = data;
         } else {
             // Insert new record - first time customer
+            const insertData: any = {
+                quote_id: quoteId,
+                vehicle_reg: formData.vehicleReg || '',
+                full_name: formData.fullName,
+                email: formData.email,
+                mobile: formData.mobile,
+                postcode: formData.postcode,
+                location: formData.location,
+                appointment_date: formData.date,
+                time_slot: formData.timeSlot,
+                insurance_provider: formData.insuranceProvider,
+                policy_number: formData.policyNumber,
+                incident_date: formData.incidentDate,
+                policy_excess: formData.policyExcessAmount,
+                policy_expiry: formData.policyExpiryDate,
+                selected_windows: selectedWindows && selectedWindows.length > 0 ? [selectedWindows] : null,
+                window_damage: windowDamage && Object.keys(windowDamage).length > 0 ? [windowDamage] : null,
+                window_spec: specifications && specifications.length > 0 ? [specifications] : null,
+                payment_option: standardizedPaymentOption,
+                glass_type: glassType || null,
+                quote_price: quotePrice,
+                adas_calibration: adasCalibration || null,
+                delivery_type: deliveryType || 'standard'
+            };
+
+            // Add vehicle details if provided
+            if (vehicleDetails) {
+                insertData.brand = vehicleDetails.manufacturer;
+                insertData.model = vehicleDetails.model;
+                insertData.year = vehicleDetails.year;
+                insertData.colour = vehicleDetails.colour;
+                insertData.type = vehicleDetails.type;
+                insertData.style = vehicleDetails.style;
+                insertData.door = vehicleDetails.doorPlan ? vehicleDetails.doorPlan.split(' ')[0] : null;
+            }
+
             const { data, error } = await supabase
                 .from('MasterCustomer')
-                .insert([{
-                    quote_id: quoteId,
-                    vehicle_reg: formData.vehicleReg || '',
-                    full_name: formData.fullName,
-                    email: formData.email,
-                    mobile: formData.mobile,
-                    postcode: formData.postcode,
-                    location: formData.location,
-                    appointment_date: formData.date,
-                    time_slot: formData.timeSlot,
-                    insurance_provider: formData.insuranceProvider,
-                    policy_number: formData.policyNumber,
-                    incident_date: formData.incidentDate,
-                    policy_excess: formData.policyExcessAmount,
-                    policy_expiry: formData.policyExpiryDate,
-                    selected_windows: selectedWindows && selectedWindows.length > 0 ? [selectedWindows] : null,
-                    window_damage: windowDamage && Object.keys(windowDamage).length > 0 ? [windowDamage] : null,
-                    window_spec: specifications && specifications.length > 0 ? [specifications] : null,
-                    payment_option: standardizedPaymentOption,
-                    glass_type: glassType || null,
-                    quote_price: quotePrice,
-                    adas_calibration: adasCalibration || null
-                }])
+                .insert([insertData])
                 .select()
                 .single();
 
@@ -136,9 +164,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             // Don't fail the main request if Klaviyo fails - not the end of the world
         }
 
+        // Generate permanent magic link for winback emails
+        let permanentMagicLink = null;
+        try {
+            const linkResponse = await fetch(`${req.headers.host?.includes('localhost') ? 'http' : 'https'}://${req.headers.host}/api/generate-permanent-magic-link`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    quoteId: quoteId,
+                    email: formData.email
+                }),
+            });
+
+            if (linkResponse.ok) {
+                const linkData = await linkResponse.json();
+                permanentMagicLink = linkData.permanentMagicLink;
+                console.log('✅ Permanent magic link generated for quote:', quoteId);
+            } else {
+                console.warn('⚠️ Failed to generate permanent magic link for quote:', quoteId);
+            }
+        } catch (linkError) {
+            console.error('Error generating permanent magic link:', linkError);
+            // Don't fail the main request if permanent link generation fails
+        }
+
         return res.status(200).json({
             message: 'Contact information saved successfully',
-            recordId: result.id
+            recordId: result.id,
+            permanentMagicLink: permanentMagicLink
         });
     } catch (error) {
         console.error('Error saving contact info:', error);

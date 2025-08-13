@@ -320,8 +320,8 @@ export class KlaviyoService {
       
       const adminEmail = process.env.ADMIN_EMAIL || 'admin@windscreencompare.com';
       
-      // Generate unique event ID to prevent email chaining for admin notifications
-      const uniqueEventId = `admin_order_notification_${data.quote_id || data.order_id}_${Date.now()}`;
+      // Generate deterministic unique event ID to prevent duplicate admin notifications
+      const uniqueEventId = `admin_order_notification_${data.quote_id || data.order_id}_${data.booking_reference || 'no_ref'}`;
       
       const payload = {
         data: {
@@ -386,7 +386,7 @@ export class KlaviyoService {
               // Add unique identifiers to prevent email chaining
               unique_event_id: uniqueEventId,
               timestamp_ms: Date.now(),
-              event_uuid: `admin-order-${data.quote_id || data.order_id}-${Date.now()}`
+              event_uuid: `admin-order-${data.quote_id || data.order_id}-${data.booking_reference || 'no_ref'}`
             },
             metric: {
               data: {
@@ -426,8 +426,8 @@ export class KlaviyoService {
     try {
       console.log('📧 Sending payment receipt email via Klaviyo');
       
-      // Generate unique event ID to prevent email chaining
-      const uniqueEventId = `payment_receipt_${data.quote_id}_${data.payment_intent_id}_${Date.now()}`;
+      // Generate deterministic unique event ID to prevent duplicates
+      const uniqueEventId = `payment_receipt_${data.quote_id}_${data.payment_intent_id}`;
       
       const payload = {
         data: {
@@ -442,7 +442,7 @@ export class KlaviyoService {
               unique_event_id: uniqueEventId,
               payment_intent_id: data.payment_intent_id,
               timestamp_ms: Date.now(),
-              event_uuid: `receipt-${data.quote_id}-${Date.now()}`
+              event_uuid: `receipt-${data.quote_id}-${data.payment_intent_id}`
             },
             metric: {
               data: {
@@ -488,8 +488,8 @@ export class KlaviyoService {
     try {
       console.log('📧 Sending order confirmation email via Klaviyo');
       
-      // Generate unique event ID to prevent email chaining
-      const uniqueEventId = `order_confirmation_${data.quote_id}_${data.booking_reference}_${Date.now()}`;
+      // Generate deterministic unique event ID to prevent duplicates
+      const uniqueEventId = `order_confirmation_${data.quote_id}_${data.booking_reference}`;
       
       const payload = {
         data: {
@@ -504,7 +504,7 @@ export class KlaviyoService {
               unique_event_id: uniqueEventId,
               booking_reference: data.booking_reference,
               timestamp_ms: Date.now(),
-              event_uuid: `order-${data.quote_id}-${Date.now()}`
+              event_uuid: `order-${data.quote_id}-${data.booking_reference}`
             },
             metric: {
               data: {

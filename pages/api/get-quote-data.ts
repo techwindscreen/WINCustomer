@@ -108,7 +108,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             glassColor: safeJsonParse(data.glass_color, {}),
             uploadedImages: safeJsonParse(data.uploaded_images, safeJsonParse(data.damage_images, [])),
             glassType: data.glass_type || null,
-            adasCalibration: data.adas_calibration || null
+            adasCalibration: data.adas_calibration || null,
+            deliveryType: data.delivery_type || 'standard'
         };
 
         // Log potential data issues for debugging

@@ -13,6 +13,8 @@ const WindscreenCompare: React.FC = () => {
   const [vehicleReg, setVehicleReg] = useState('')
   const [postcode, setPostcode] = useState('')
   const [error, setError] = useState('')
+  const [vehicleRegError, setVehicleRegError] = useState(false)
+  const [isValidatingVehicle, setIsValidatingVehicle] = useState(false)
 
   useEffect(() => {
     // Load saved data from localStorage if available
@@ -38,9 +40,33 @@ const WindscreenCompare: React.FC = () => {
     return regRegex.test(reg.trim());
   };
 
+  // Vehicle lookup validation function
+  const validateVehicleRegistration = async (registration: string) => {
+    try {
+      const response = await fetch('/api/vehicle-lookup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ registration: registration.toUpperCase() }),
+      });
+
+      if (!response.ok) {
+        return false;
+      }
+
+      const data = await response.json();
+      return data.success;
+    } catch (error) {
+      console.error('Vehicle lookup error:', error);
+      return false;
+    }
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setError('')
+    setVehicleRegError(false)
 
     // Basic validation first
     if (!vehicleReg || !postcode) {
@@ -50,11 +76,23 @@ const WindscreenCompare: React.FC = () => {
 
     if (!isValidUKVehicleReg(vehicleReg)) {
       setError('Please enter a valid UK vehicle registration');
+      setVehicleRegError(true);
       return;
     }
 
     if (!isValidUKPostcode(postcode)) {
       setError('Please enter a valid UK postcode');
+      return;
+    }
+
+    // Vehicle lookup validation
+    setIsValidatingVehicle(true);
+    const vehicleExists = await validateVehicleRegistration(vehicleReg);
+    setIsValidatingVehicle(false);
+
+    if (!vehicleExists) {
+      setError('Vehicle registration not found. Please check the registration number and try again.');
+      setVehicleRegError(true);
       return;
     }
 
@@ -127,6 +165,8 @@ const WindscreenCompare: React.FC = () => {
             vehicleReg={vehicleReg}
             postcode={postcode}
             error={error}
+            vehicleRegError={vehicleRegError}
+            isValidatingVehicle={isValidatingVehicle}
             setVehicleReg={setVehicleReg}
             setPostcode={setPostcode}
             handleSubmit={handleSubmit}

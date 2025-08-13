@@ -14,7 +14,7 @@ export default async function handler(
   }
 
   try {
-    const { amount, vehicleReg, selectedWindows, specifications, glassType, selectedCompany, adasCalibration } = req.body;
+    const { amount, vehicleReg, selectedWindows, specifications, glassType, selectedCompany, adasCalibration, deliveryType } = req.body;
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -24,7 +24,7 @@ export default async function handler(
             currency: 'gbp',
             product_data: {
               name: `Windscreen Service - ${vehicleReg}`,
-              description: `Windows: ${selectedWindows.join(', ')}\nSpecifications: ${specifications.join(', ')}`,
+              description: `Windows: ${selectedWindows.join(', ')}\nSpecifications: ${specifications.join(', ')}\nDelivery: ${deliveryType === 'express' ? 'Express (Same/Next Day)' : 'Standard'}`,
             },
             unit_amount: Math.round(amount * 100),
           },
@@ -34,6 +34,11 @@ export default async function handler(
       mode: 'payment',
       success_url: `${req.headers.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.origin}/quote?vehicleReg=${vehicleReg}`,
+      metadata: {
+        delivery_type: deliveryType || 'standard',
+        glass_type: glassType || 'OEE',
+        vehicle_reg: vehicleReg
+      },
     });
 
     res.status(200).json({ id: session.id });

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Windscreen Quote is Ready</title>
+</head>
+<body>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f9f9f9; padding: 20px;">
+        <!-- Header -->
+        <div style="background-color: white; color: #333; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; border-bottom: 2px solid #0FB8C1;">
+            <img alt="WindscreenCompare Logo" src="https://d3k81ch9hvuctc.cloudfront.net/company/XjdccL/images/5ca10ab9-79c7-4755-af6e-07ffff417b0a.png" style="max-width: 200px; height: auto; margin-bottom: 10px;"/>
+            <h1 style="margin: 0; font-size: 24px; color: #0FB8C1;">
+                Your Quote is Ready!
+            </h1>
+            <p style="margin: 5px 0 0 0; font-size: 16px; color: #666;">
+                Complete your windscreen replacement booking
+            </p>
+        </div>
+
+        <!-- Content -->
+        <div style="background-color: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <!-- Greeting -->
+            <h2 style="color: #0FB8C1; margin-top: 0; font-size: 20px; margin-bottom: 20px;">
+                Hi {{ person.first_name|default:"there" }}! 👋
+            </h2>
+            <p style="color: #333; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+                Great news! Your windscreen replacement quote is ready and waiting for you. We've prepared everything you need to get your windscreen fixed quickly and professionally.
+            </p>
+
+            <!-- Quote Details -->
+            <div style="background-color: #e8f8f9; padding: 20px; border-radius: 6px; margin-bottom: 25px; border: 2px solid #0FB8C1;">
+                <h3 style="color: #0FB8C1; margin-top: 0; font-size: 18px; margin-bottom: 15px;">
+                    📋 Your Quote Details
+                </h3>
+                <div style="font-size: 16px; line-height: 1.8;">
+                    <p style="margin: 0 0 10px 0;">
+                        <strong style="color: #333;">Quote ID:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{ event.quote_id|default:"WIN-XXXXX" }}</span>
+                    </p>
+                    <p style="margin: 0 0 10px 0;">
+                        <strong style="color: #333;">Vehicle:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{ event.vehicle_registration|default:"Your Vehicle" }}</span>
+                    </p>
+                    <p style="margin: 0 0 10px 0;">
+                        <strong style="color: #333;">Service:</strong> <span style="color: #0FB8C1; font-weight: 600;">{{ event.glass_type|default:"Professional" }} Windscreen Replacement</span>
+                    </p>
+                    <p style="margin: 0;">
+                        <strong style="color: #333;">Total Price:</strong> <span style="color: #0FB8C1; font-weight: 600; font-size: 18px;">{{ event.total_price|default:"XXX.XX" }}</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- CTA Section -->
+            <div style="background-color: #0FB8C1; padding: 20px; border-radius: 6px; margin-bottom: 25px; text-align: center;">
+                <h3 style="color: white; margin-top: 0; font-size: 18px; margin-bottom: 15px;">
+                    🚗 Ready to Book Your Service?
+                </h3>
+                <a href="https://quote.windscreencompare.com/api/get-permanent-link?quoteId={{ event.quote_id }}&email={{ person.email }}" style="display: inline-block; background-color: white; color: #0FB8C1; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; border: 2px solid white;">
+                    Complete Your Booking &rarr;
+                </a>
+                <p style="color: white; font-size: 14px; margin: 15px 0 0 0;">
+                    Click above to view your quote and make payment
+                </p>
+            </div>
+
+            <!-- Benefits -->
+            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 25px;">
+                <h3 style="color: #0FB8C1; margin-top: 0; font-size: 18px; margin-bottom: 15px;">
+                    ✅ Why Choose WindscreenCompare?
+                </h3>
+                <div style="font-size: 16px; line-height: 1.8;">
+                    <p style="margin: 0 0 10px 0;">
+                        <strong style="color: #333;">✓ Expert Installation:</strong> <span style="color: #0FB8C1; font-weight: 600;">Professional fitting by certified technicians</span>
+                    </p>
+                    <p style="margin: 0 0 10px 0;">
+                        <strong style="color: #333;">✓ Quality Guarantee:</strong> <span style="color: #0FB8C1; font-weight: 600;">Premium glass with manufacturer warranty</span>
+                    </p>
+                    <p style="margin: 0 0 10px 0;">
+                        <strong style="color: #333;">✓ Flexible Payments:</strong> <span style="color: #0FB8C1; font-weight: 600;">Pay in full, deposit, or split with Klarna</span>
+                    </p>
+                    <p style="margin: 0;">
+                        <strong style="color: #333;">✓ Convenient Service:</strong> <span style="color: #0FB8C1; font-weight: 600;">Mobile fitting at your location</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Urgency -->
+            <div style="background-color: #fff3cd; padding: 20px; border-radius: 6px; margin-bottom: 25px; border-left: 4px solid #ffc107;">
+                <h3 style="color: #856404; margin-top: 0; font-size: 16px; margin-bottom: 15px;">
+                    ⏰ Book Soon!
+                </h3>
+                <p style="color: #856404; font-size: 14px; line-height: 1.6; margin: 0;">
+                    Weather conditions can affect availability. Secure your preferred date today.
+                </p>
+            </div>
+
+            <!-- Payment Options -->
+            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin-bottom: 25px;">
+                <h3 style="color: #0FB8C1; margin-top: 0; font-size: 18px; margin-bottom: 15px;">
+                    💳 Multiple Payment Options Available
+                </h3>
+                <div style="font-size: 16px; line-height: 1.8;">
+                    <p style="margin: 0 0 10px 0;">
+                        <strong style="color: #333;">Pay in Full:</strong> <span style="color: #0FB8C1; font-weight: 600;">Complete payment today</span>
+                    </p>
+                    <p style="margin: 0 0 10px 0;">
+                        <strong style="color: #333;">30% Deposit:</strong> <span style="color: #0FB8C1; font-weight: 600;">Pay 30% now and rest on completion</span>
+                    </p>
+                    <p style="margin: 0;">
+                        <strong style="color: #333;">Split Payment:</strong> <span style="color: #0FB8C1; font-weight: 600;">Use Klarna to pay in installments</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Contact Info -->
+            <div style="text-align: center; margin-top: 25px;">
+                <p style="color: #333; font-size: 16px; margin: 0 0 10px 0;">
+                    Need help or have questions? Simply reply to this email </p>
+                <p style="color: #333; font-size: 16px; margin: 0;">
+                    Best regards,<br>
+                    <strong>The Windscreen Compare Team</strong>
+                </p>
+            </div>
+
+            <!-- Footer Info -->
+            <div style="text-align: center; margin-top: 25px; padding-top: 20px; border-top: 1px solid #eee;">
+                <p style="color: #666; font-size: 14px; margin: 0 0 15px 0;">
+                    Windscreen Compare Ltd<br>
+                    Professional Windscreen Replacement Services<br>
+                    📧 Email: hello@windscreencompare.com
+                </p>
+                <p style="color: #666; font-size: 12px; margin: 0;">
+                    You're receiving this email because you requested a windscreen replacement quote.<br>
+                    <a href="{{ unsubscribe_url }}" style="color: #0FB8C1;">Unsubscribe</a> | 
+                    <a href="https://quote.windscreencompare.com" style="color: #0FB8C1;">Visit Website</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -49,60 +49,36 @@ interface PriceBreakdown {
   otrPrice?: number | null;
 }
 
-// Fetch vehicle val data from UK Vehicle Data API
+/**
+ * Fetch vehicle valuation data from Supabase cache (no external API calls)
+ * 
+ * This function ONLY uses cached data from Supabase. It does NOT call the UK Vehicle Data API.
+ * The vehicle data should already be cached when /api/vehicle-lookup is called first.
+ * This ensures we minimize external API calls and costs.
+ */
 async function fetchVehicleValuation(registration: string) {
   try {
-    const apiKey = process.env.UK_VEHICLE_DATA_API_KEY;
+    console.log(`Fetching cached valuation data for reg: ${registration}`);
     
-    if (!apiKey) {
-      console.error('UK_VEHICLE_DATA_API_KEY environment variable is not set');
+    // Check Supabase cache for OTR price
+    const { data: cachedData, error } = await supabase
+      .from('MasterCustomer')
+      .select('otr_price')
+      .eq('vehicle_reg', registration)
+      .not('otr_price', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (!error && cachedData && cachedData.otr_price) {
+      console.log(`Found cached OTR value: £${cachedData.otr_price}`);
+      return parseFloat(cachedData.otr_price);
+    } else {
+      console.log('No cached OTR price found. Vehicle should be looked up first via /api/vehicle-lookup');
       return null;
     }
-
-    console.log(`Fetching valuation data for reg: ${registration}`);
-    
-    const response = await fetch(
-      `https://uk1.ukvehicledata.co.uk/api/datapackage/ValuationData?v=2&api_nullitems=1&auth_apikey=${apiKey}&key_VRM=${registration}`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      }
-    );
-
-    const data = await response.json();
-    // console.log('Full Val API response:', JSON.stringify(data, null, 2)); // debug - remove later
-
-    if (data.Response?.StatusCode === "Success") {
-      console.log('API call successful, checking for val data...');
-      
-      // Check the correct path for valuation data
-      const dataItems = data.Response.DataItems;
-      if (dataItems && dataItems.ValuationList) {
-        console.log('ValuationList found:', JSON.stringify(dataItems.ValuationList, null, 2));
-        
-        const otrValue = dataItems.ValuationList.OTR;
-        
-        if (otrValue) {
-          console.log(`OTR value found: £${otrValue}`);
-          return parseFloat(otrValue);
-        } else {
-          console.log('OTR value not found in ValuationList');
-          console.log('Available fields in ValuationList:', Object.keys(dataItems.ValuationList));
-        }
-      } else {
-        console.log('ValuationList not found in DataItems');
-        console.log('Available DataItems fields:', dataItems ? Object.keys(dataItems) : 'None');
-      }
-    } else {
-      console.log(`API call failed with status: ${data.Response?.StatusCode}`);
-      console.log(`Status message: ${data.Response?.StatusMessage}`);
-    }
-    
-    return null;
   } catch (error) {
-    console.error('Error fetching vehicle valuation:', error);
+    console.error('Error fetching cached vehicle valuation:', error);
     return null;
   }
 }

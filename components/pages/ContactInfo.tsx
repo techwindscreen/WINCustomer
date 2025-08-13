@@ -82,8 +82,15 @@ const ContactDetails: React.FC = () => {
   const [parsedWindowDamage, setParsedWindowDamage] = useState<{ [key: string]: string } | null>(null);
   const [parsedSpecifications, setParsedSpecifications] = useState<string[]>([]);
 
+  // Helper function to get default date (two days from now)
+  const getDefaultDate = () => {
+    const defaultDate = new Date();
+    defaultDate.setDate(defaultDate.getDate() + 2);
+    return defaultDate.toISOString().split('T')[0];
+  };
+
   const [formData, setFormData] = useState({
-    date: '',
+    date: getDefaultDate(),
     timeSlot: 'any',
     insuranceProvider: '',
     policyNumber: '',
@@ -97,6 +104,9 @@ const ContactDetails: React.FC = () => {
     mobile: '',
     areaCode: '+44',
   })
+  
+  // Track delivery type based on appointment date (default is standard since we set date to 2 days from now)
+  const [deliveryType, setDeliveryType] = useState<'standard' | 'express'>('standard')
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>('');
   const [vehicleDetails, setVehicleDetails] = useState<VehicleDetails | null>(null)
@@ -106,9 +116,25 @@ const ContactDetails: React.FC = () => {
   const [isLoadingAddresses, setIsLoadingAddresses] = useState(false);
   const [addressError, setAddressError] = useState<string | null>(null);
   const [showAddressDropdown, setShowAddressDropdown] = useState(false);
+  
+  // Add debounce timer and abort controller for address lookup
+  const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
 
   // Add state for checkbox
   const [termsAccepted, setTermsAccepted] = useState(false);
+  
+  // Cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
+      if (abortController) {
+        abortController.abort();
+      }
+    };
+  }, [debounceTimer, abortController]);
 
   const validatePhoneNumber = (number: string) => {
     // UK phone number regex (allows spaces and dashes)
@@ -124,11 +150,21 @@ const ContactDetails: React.FC = () => {
       const cleanedPostcode = value.replace(/[^\w\s]/g, '').toUpperCase();
       setFormData(prev => ({ ...prev, [name]: cleanedPostcode }));
       
-      // If postcode is complete (roughly 5-8 characters), fetch addresses
+      // Clear existing timer
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
+      
+      // If postcode is complete (roughly 5-8 characters), fetch addresses with debounce
       if (cleanedPostcode.length >= 5 && cleanedPostcode.length <= 8) {
-        fetchAddresses(cleanedPostcode);
+        const timer = setTimeout(() => {
+          fetchAddresses(cleanedPostcode);
+        }, 300); // 300ms debounce
+        setDebounceTimer(timer);
       } else {
         setAddresses([]);
+        setShowAddressDropdown(false);
+        setAddressError(null);
       }
     } else if (name === 'mobile') {
       // Remove any non-numeric characters except spaces and dashes
@@ -149,10 +185,27 @@ const ContactDetails: React.FC = () => {
         ...prev,
         [name]: value
       }));
+      
+      // If date field is changed, update delivery type based on selection
+      if (name === 'date') {
+        const requiresExpress = isExpressDeliveryRequired(value);
+        setDeliveryType(requiresExpress ? 'express' : 'standard');
+      }
     }
   };
 
   const fetchAddresses = async (postcode: string) => {
+    console.log('Fetching addresses for postcode:', postcode);
+    
+    // Cancel any existing request
+    if (abortController) {
+      abortController.abort();
+    }
+    
+    // Create new abort controller for this request
+    const newAbortController = new AbortController();
+    setAbortController(newAbortController);
+    
     setIsLoadingAddresses(true);
     setAddressError(null);
     setShowAddressDropdown(true);
@@ -164,25 +217,40 @@ const ContactDetails: React.FC = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ postcode }),
+        signal: newAbortController.signal,
       });
 
       const data = await response.json();
       console.log('Address API response:', data);
 
-      if (data.success && data.addresses?.length > 0) {
-        setAddresses(data.addresses);
-      } else {
-        setAddressError(data.message || 'No addresses found for this postcode');
-        setAddresses([]);
-        setShowAddressDropdown(false);
+      // Only update state if this request wasn't cancelled
+      if (!newAbortController.signal.aborted) {
+        if (data.success && data.addresses?.length > 0) {
+          console.log(`Found ${data.addresses.length} addresses for ${postcode}`);
+          setAddresses(data.addresses);
+          setAddressError(null);
+        } else {
+          console.log('No addresses found:', data.message);
+          setAddressError(data.message || 'No addresses found for this postcode');
+          setAddresses([]);
+          setShowAddressDropdown(false);
+        }
       }
-    } catch (err) {
-      console.error('Error fetching addresses:', err);
-      setAddressError('Failed to fetch addresses. Please enter address manually.');
-      setAddresses([]);
-      setShowAddressDropdown(false);
+    } catch (err: any) {
+      // Only handle errors if the request wasn't cancelled
+      if (!newAbortController.signal.aborted) {
+        console.error('Error fetching addresses:', err);
+        if (err.name !== 'AbortError') {
+          setAddressError('Failed to fetch addresses. Please enter address manually.');
+          setAddresses([]);
+          setShowAddressDropdown(false);
+        }
+      }
     } finally {
-      setIsLoadingAddresses(false);
+      // Only update loading state if this request wasn't cancelled
+      if (!newAbortController.signal.aborted) {
+        setIsLoadingAddresses(false);
+      }
     }
   };
 
@@ -447,26 +515,44 @@ const ContactDetails: React.FC = () => {
         quoteId = `QT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       }
 
+      const submissionData = {
+        formData: {
+          ...formData,
+          vehicleReg: vehicleRegString
+        },
+        quoteId,
+        selectedWindows: Array.from(selectedWindows),
+        windowDamage: windowDamage,
+        specifications: parsedSpecifications,
+        paymentOption: paymentOption,
+        glassType: glassType || fetchedQuoteData?.glassType,
+        deliveryType: deliveryType,
+        quotePrice: fetchedQuoteData?.quotePrice || null,
+        adasCalibration: fetchedQuoteData?.adasCalibration || null,
+        vehicleDetails: fetchedQuoteData?.vehicleDetails || null
+      };
+
+      console.log('Submitting contact info data:', submissionData);
+
       const response = await fetch('/api/submit-contact-info', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          formData,
-          quoteId,
-          selectedWindows: Array.from(selectedWindows),
-          windowDamage: windowDamage,
-          specifications: parsedSpecifications,
-          paymentOption: paymentOption,
-          glassType: glassType || fetchedQuoteData?.glassType
-        }),
+        body: JSON.stringify(submissionData),
       });
 
       const responseData = await response.json();
+      
+      console.log('Submit contact info response:', {
+        status: response.status,
+        ok: response.ok,
+        data: responseData
+      });
 
       if (!response.ok) {
-        throw new Error(responseData.message || 'Failed to submit form');
+        console.error('API Error Details:', responseData);
+        throw new Error(responseData.message || `Failed to submit form (Status: ${response.status})`);
       }
 
       // Navigate with only quoteID for cleaner magic links
@@ -501,6 +587,23 @@ const ContactDetails: React.FC = () => {
   const getTodayDate = () => {
     const today = new Date();
     return today.toISOString().split('T')[0];
+  };
+
+  // Function to determine if selected date requires express delivery
+  const isExpressDeliveryRequired = (selectedDate: string) => {
+    if (!selectedDate) return false;
+    
+    const selected = new Date(selectedDate);
+    const today = new Date();
+    const tomorrow = new Date();
+    tomorrow.setDate(today.getDate() + 1);
+    
+    // Compare dates (ignoring time)
+    const selectedDateOnly = selected.toISOString().split('T')[0];
+    const todayOnly = today.toISOString().split('T')[0];
+    const tomorrowOnly = tomorrow.toISOString().split('T')[0];
+    
+    return selectedDateOnly === todayOnly || selectedDateOnly === tomorrowOnly;
   };
 
   return (
@@ -669,7 +772,7 @@ const ContactDetails: React.FC = () => {
                     <div className="col-span-1">
                       <label htmlFor="postcode" className="mb-1 font-bold flex items-center gap-2">
                         <MapPin className="w-5 h-5 text-[#0FB8C1]" />
-                        Your Postcode <span className="text-sm font-normal text-gray-500">(To find nearest technician)</span>
+                        Your Postcode <span className="text-sm font-normal text-gray-500">(To find nearest technician & auto-fill address)</span>
                       </label>
                       <input
                         type="text"
@@ -677,9 +780,18 @@ const ContactDetails: React.FC = () => {
                         name="postcode"
                         value={formData.postcode}
                         onChange={handleInputChange}
-                        className="w-full p-2 border rounded"
+                        placeholder="E.g. SW1A 1AA"
+                        className={`w-full p-2 border rounded ${
+                          isLoadingAddresses ? 'border-blue-300' : 'border-gray-300'
+                        } focus:ring-2 focus:ring-[#0FB8C1] focus:border-transparent`}
                         required
                       />
+                      {isLoadingAddresses && (
+                        <p className="text-blue-500 text-xs mt-1">🔍 Looking up addresses...</p>
+                      )}
+                      {formData.postcode.length >= 5 && addresses.length === 0 && !isLoadingAddresses && !addressError && (
+                        <p className="text-gray-500 text-xs mt-1">Enter a valid UK postcode to see address suggestions</p>
+                      )}
                     </div>
                     <div className="col-span-1">
                       <label htmlFor="mobile" className="mb-1 font-bold flex items-center gap-2">
@@ -723,7 +835,7 @@ const ContactDetails: React.FC = () => {
                   <div className="mb-4">
                     <label htmlFor="location" className="mb-1 font-bold flex items-center gap-2">
                       <Home className="w-5 h-5 text-[#0FB8C1]" />
-                      Vehicle Address <span className="text-sm font-normal text-gray-500">(Where repair will take place)</span>
+                      Vehicle Address <span className="text-sm font-normal text-gray-500">(Where repair will take place - auto-fills from postcode)</span>
                     </label>
                     <input
                       type="text"
@@ -731,23 +843,35 @@ const ContactDetails: React.FC = () => {
                       name="location"
                       value={formData.location}
                       onChange={handleInputChange}
-                      className="w-full p-2 border rounded"
+                      placeholder="Enter postcode above to see address suggestions..."
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-[#0FB8C1] focus:border-transparent"
                       required
                     />
                     {isLoadingAddresses && (
-                      <div className="mt-2 text-sm text-gray-500">Loading addresses...</div>
+                      <div className="mt-2 text-sm text-blue-500 flex items-center gap-2">
+                        <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                        Loading addresses...
+                      </div>
                     )}
                     {addressError && (
-                      <div className="mt-2 text-sm text-red-500">{addressError}</div>
+                      <div className="mt-2 text-sm text-red-500 flex items-center gap-2">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                        </svg>
+                        {addressError}
+                      </div>
                     )}
                     {addresses.length > 0 && showAddressDropdown && (
-                      <div className="mt-2 border rounded max-h-40 overflow-y-auto">
+                      <div className="mt-2 border border-blue-300 rounded-lg max-h-40 overflow-y-auto bg-white shadow-lg">
+                        <div className="px-3 py-2 bg-blue-50 text-blue-700 text-sm font-medium border-b">
+                          Select an address:
+                        </div>
                         {addresses.map((address, index) => (
                           <button
                             type="button"
                             key={index}
                             onClick={(e) => handleAddressSelect(e, address)}
-                            className="w-full text-left px-3 py-2 hover:bg-gray-100 text-sm border-b last:border-b-0"
+                            className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm border-b last:border-b-0 transition-colors"
                           >
                             {address.SummaryAddress}
                           </button>

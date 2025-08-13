@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { amount, quoteId, paymentType, totalAmount, customerEmail } = req.body;
+    const { amount, quoteId, paymentType, totalAmount, customerEmail, deliveryType } = req.body;
 
     // Configure payment methods based on payment type
     const paymentMethodConfiguration = paymentType === 'split' 
@@ -41,9 +41,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         payment_type: paymentType || 'full',
         total_amount: totalAmount ? Math.round(totalAmount * 100).toString() : Math.round(amount * 100).toString(),
         customer_email: customerEmail || '',
+        delivery_type: deliveryType || 'standard',
         created_at: new Date().toISOString()
       },
-      description: `Windscreen Service - Quote ${quoteId || 'Unknown'} - ${paymentType || 'Full'} Payment`
+      description: `Windscreen Service - Quote ${quoteId || 'Unknown'} - ${paymentType || 'Full'} Payment - ${deliveryType === 'express' ? 'Express Delivery' : 'Standard Delivery'}`
     });
 
     console.log('Payment intent created:', {

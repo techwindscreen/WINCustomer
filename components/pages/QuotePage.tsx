@@ -25,7 +25,7 @@ const windowNameMapping: { [key: string]: string } = {
   'jqvmap1_qg': 'Rear Driver Quarter'
 };
 
-const CheckoutForm = ({ amount, paymentType, isDisabled = false, customerEmail, quoteId, totalPrice }: { amount: number, paymentType: 'full' | 'deposit' | 'split', isDisabled?: boolean, customerEmail?: string, quoteId?: string, totalPrice?: number }) => {
+const CheckoutForm = ({ amount, paymentType, isDisabled = false, customerEmail, quoteId, totalPrice, deliveryType }: { amount: number, paymentType: 'full' | 'deposit' | 'split', isDisabled?: boolean, customerEmail?: string, quoteId?: string, totalPrice?: number, deliveryType?: 'standard' | 'express' }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +52,8 @@ const CheckoutForm = ({ amount, paymentType, isDisabled = false, customerEmail, 
         paymentType,
         totalAmount: totalPrice || amount,
         quoteId: quoteId || window.location.pathname.split('/').pop() || 'unknown',
-        customerEmail: customerEmail
+        customerEmail: customerEmail,
+        deliveryType: deliveryType || 'standard'
       }),
     });
 
@@ -683,6 +684,11 @@ const QuotePage: React.FC = () => {
         setGlassType(fetchedQuoteData.glassType);
       }
       
+      // Update delivery type from fetched data
+      if (fetchedQuoteData.deliveryType) {
+        setDeliveryType(fetchedQuoteData.deliveryType);
+      }
+      
       // Trigger quote calculation for magic links after data is loaded
       if (isMagicLink && fetchedQuoteData.vehicleReg && !baseQuoteData) {
         console.log('Triggering quote calculation for magic link with vehicle reg:', fetchedQuoteData.vehicleReg);
@@ -714,7 +720,8 @@ const QuotePage: React.FC = () => {
             selectedWindows: dataToUse.selectedWindows,
             specifications: dataToUse.specifications,
             glassType: glassType, // Add the glass type to the checkout session
-            selectedCompany: selectedBusiness // Add the selected company
+            selectedCompany: selectedBusiness, // Add the selected company
+            deliveryType: deliveryType // Add the delivery type to the checkout session
           }),
       });
 
@@ -782,6 +789,25 @@ const QuotePage: React.FC = () => {
   };
 
   const handleDeliveryTypeChange = (type: 'standard' | 'express') => {
+    // Check if appointment is same day or next day - if so, don't allow standard delivery
+    if (type === 'standard' && displayedContactDetails.date) {
+      const appointmentDate = new Date(displayedContactDetails.date);
+      const today = new Date();
+      const tomorrow = new Date();
+      tomorrow.setDate(today.getDate() + 1);
+      
+      const appointmentDateOnly = appointmentDate.toISOString().split('T')[0];
+      const todayOnly = today.toISOString().split('T')[0];
+      const tomorrowOnly = tomorrow.toISOString().split('T')[0];
+      
+      const isSameOrNextDay = appointmentDateOnly === todayOnly || appointmentDateOnly === tomorrowOnly;
+      
+      if (isSameOrNextDay) {
+        // Don't change to standard if it's same day or next day
+        return;
+      }
+    }
+    
     setDeliveryType(type);
     // Only call API for delivery type changes since it affects final pricing
     calculateQuoteWithType(type);
@@ -1186,16 +1212,41 @@ const QuotePage: React.FC = () => {
 
                               {/* Service Type Selection */}
                               <div className="flex gap-3 mb-6 justify-center">
-                                <button
-                                  onClick={() => handleDeliveryTypeChange('standard')}
-                                  className={`px-4 py-2 rounded-lg border-2 transition-all text-sm ${
-                                    deliveryType === 'standard'
-                                      ? 'bg-yellow-100 border-yellow-400 text-gray-800 font-semibold'
-                                      : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300'
-                                  }`}
-                                >
-                                  Standard Service
-                                </button>
+                                {(() => {
+                                  // Check if standard delivery should be disabled
+                                  let isStandardDisabled = false;
+                                  if (displayedContactDetails.date) {
+                                    const appointmentDate = new Date(displayedContactDetails.date);
+                                    const today = new Date();
+                                    const tomorrow = new Date();
+                                    tomorrow.setDate(today.getDate() + 1);
+                                    
+                                    const appointmentDateOnly = appointmentDate.toISOString().split('T')[0];
+                                    const todayOnly = today.toISOString().split('T')[0];
+                                    const tomorrowOnly = tomorrow.toISOString().split('T')[0];
+                                    
+                                    isStandardDisabled = appointmentDateOnly === todayOnly || appointmentDateOnly === tomorrowOnly;
+                                  }
+
+                                  return (
+                                    <button
+                                      onClick={() => handleDeliveryTypeChange('standard')}
+                                      disabled={isStandardDisabled}
+                                      className={`px-4 py-2 rounded-lg border-2 transition-all text-sm ${
+                                        isStandardDisabled
+                                          ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
+                                          : deliveryType === 'standard'
+                                            ? 'bg-yellow-100 border-yellow-400 text-gray-800 font-semibold'
+                                            : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300'
+                                      }`}
+                                    >
+                                      Standard Service
+                                      {isStandardDisabled && (
+                                        <span className="block text-xs text-gray-400 mt-1">Not available for same/next day</span>
+                                      )}
+                                    </button>
+                                  );
+                                })()}
                                 <button
                                   onClick={() => handleDeliveryTypeChange('express')}
                                   className={`px-4 py-2 rounded-lg border-2 transition-all relative text-sm ${
@@ -1220,6 +1271,34 @@ const QuotePage: React.FC = () => {
                                   Priority + VIP Service
                                 </div>
                               )}
+
+                              {/* Express delivery notice for same/next day appointments */}
+                              {deliveryType === 'express' && displayedContactDetails.date && (() => {
+                                const appointmentDate = new Date(displayedContactDetails.date);
+                                const today = new Date();
+                                const tomorrow = new Date();
+                                tomorrow.setDate(today.getDate() + 1);
+                                
+                                const appointmentDateOnly = appointmentDate.toISOString().split('T')[0];
+                                const todayOnly = today.toISOString().split('T')[0];
+                                const tomorrowOnly = tomorrow.toISOString().split('T')[0];
+                                
+                                const isSameOrNextDay = appointmentDateOnly === todayOnly || appointmentDateOnly === tomorrowOnly;
+                                
+                                return isSameOrNextDay ? (
+                                  <div className="text-xs text-amber-700 mb-6 bg-amber-50 border border-amber-200 rounded-md p-3">
+                                    <div className="flex items-center gap-2">
+                                      <svg className="w-4 h-4 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                      </svg>
+                                      <span className="font-medium">Express delivery required</span>
+                                    </div>
+                                    <div className="mt-1">
+                                      Express delivery (£90) has been automatically added due to your {appointmentDateOnly === todayOnly ? 'same-day' : 'next-day'} appointment.
+                                    </div>
+                                  </div>
+                                ) : null;
+                              })()}
 
                               {/* Price Range Indicator */}
                               <div className="mb-6">
@@ -1658,6 +1737,7 @@ const QuotePage: React.FC = () => {
                           customerEmail={displayedContactDetails.email}
                           quoteId={router.query.quoteID as string || parsedData.quoteID}
                           totalPrice={currentPrice}
+                          deliveryType={deliveryType}
                         />
                       </Elements>
                     </div>
@@ -2052,6 +2132,7 @@ const QuotePage: React.FC = () => {
                           customerEmail={displayedContactDetails.email}
                           quoteId={router.query.quoteID as string || parsedData.quoteID}
                           totalPrice={currentPrice}
+                          deliveryType={deliveryType}
                         />
                       </Elements>
                     </div>

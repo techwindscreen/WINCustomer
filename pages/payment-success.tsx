@@ -673,11 +673,11 @@ const PaymentSuccessPage: React.FC = () => {
               <h3 className="font-semibold text-gray-900 mb-2">Need Help?</h3>
               <p className="text-gray-600 text-sm mb-4">Our customer service team is here to assist you</p>
               <a 
-                href="tel:+441234567890" 
+                href="mailto:hello@windscreencompare.com" 
                 className="inline-flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors"
               >
-                <Phone className="w-4 h-4" />
-                Call Us: 01234 567890
+                <Mail className="w-4 h-4" />
+                Email Us: hello@windscreencompare.com
               </a>
             </div>
             
